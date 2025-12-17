@@ -60,17 +60,15 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5">
-          <TabsTrigger value="basic">基本情報</TabsTrigger>
-          <TabsTrigger value="history">経過・歴史</TabsTrigger>
+      <Tabs defaultValue="background" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="background">背景・経過</TabsTrigger>
           <TabsTrigger value="life">生活状況</TabsTrigger>
-          <TabsTrigger value="psychological">心理・行動</TabsTrigger>
           <TabsTrigger value="support">支援ニーズ</TabsTrigger>
         </TabsList>
 
-        {/* ① 基本情報 */}
-        <TabsContent value="basic" className="space-y-4 mt-6">
+        {/* 背景・経過（基本情報 + 相談・経過情報 + ひきこもりの経過 + 生育歴 + 学歴・就労歴） */}
+        <TabsContent value="background" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -109,10 +107,7 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* ② 相談・経過情報 + ③ ひきこもりの経過 + ④ 生育歴 + ⑤ 学歴・就労歴 */}
-        <TabsContent value="history" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -420,10 +415,7 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* ⑦ 問題行動・心理的特徴 */}
-        <TabsContent value="psychological" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

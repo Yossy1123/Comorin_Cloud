@@ -8,12 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Upload, FileText, Activity, CheckCircle, AlertCircle, Loader2, Download } from "lucide-react"
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, Download } from "lucide-react"
 import { processImportedData, type ImportResult } from "@/lib/mock-import"
 
 export function DataImport() {
   const [conversationFile, setConversationFile] = useState<File | null>(null)
-  const [vitalFile, setVitalFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
 
@@ -23,42 +22,30 @@ export function DataImport() {
     }
   }
 
-  const handleVitalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setVitalFile(e.target.files[0])
-    }
-  }
-
   const handleImport = async () => {
-    if (!conversationFile && !vitalFile) return
+    if (!conversationFile) return
 
     setIsProcessing(true)
-    const result = await processImportedData(conversationFile, vitalFile)
+    const result = await processImportedData(conversationFile)
     setImportResult(result)
     setIsProcessing(false)
   }
 
   const handleReset = () => {
     setConversationFile(null)
-    setVitalFile(null)
     setImportResult(null)
   }
 
-  const downloadTemplate = (type: "conversation" | "vital") => {
+  const downloadTemplate = () => {
     // 【匿名化対応】テンプレートからは名前を削除、匿名化IDを使用
-    const templates = {
-      conversation: `日付,匿名化ID,会話内容
-2025-01-15,25-001,"支援者: 今日の調子はどうですか？\n当事者: まあまあです。"
-2025-01-16,25-001,"支援者: 昨日より良さそうですね。\n当事者: はい、少し気分が良いです。"`,
-      vital: `日付,匿名化ID,平均心拍数,歩数,睡眠時間,ストレスレベル
-2025-01-15,25-001,72,3500,7.5,中
-2025-01-16,25-001,68,4200,8.0,低`,
-    }
+    const template = `日付,匿名化ID,会話内容
+2025-01-15,25-001,"支援者: 今日の調子はどうですか?\n当事者: まあまあです。"
+2025-01-16,25-001,"支援者: 昨日より良さそうですね。\n当事者: はい、少し気分が良いです。"`
 
-    const blob = new Blob([templates[type]], { type: "text/csv;charset=utf-8;" })
+    const blob = new Blob([template], { type: "text/csv;charset=utf-8;" })
     const link = document.createElement("a")
     link.href = URL.createObjectURL(blob)
-    link.download = `template_${type}.csv`
+    link.download = "template_conversation.csv"
     link.click()
   }
 
@@ -76,7 +63,7 @@ export function DataImport() {
         </TabsList>
 
         <TabsContent value="upload" className="space-y-6 mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -114,47 +101,8 @@ export function DataImport() {
                 <Button
                   variant="outline"
                   className="w-full bg-transparent"
-                  onClick={() => downloadTemplate("conversation")}
+                  onClick={downloadTemplate}
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  テンプレートをダウンロード
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  バイタルデータ
-                </CardTitle>
-                <CardDescription>バイタルデータをCSV形式でアップロード</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleVitalFileChange}
-                    className="hidden"
-                    id="vital-file"
-                  />
-                  <label htmlFor="vital-file" className="cursor-pointer">
-                    <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    {vitalFile ? (
-                      <div>
-                        <p className="font-semibold text-foreground">{vitalFile.name}</p>
-                        <p className="text-sm text-muted-foreground mt-1">{(vitalFile.size / 1024).toFixed(2)} KB</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="font-semibold text-foreground">ファイルを選択</p>
-                        <p className="text-sm text-muted-foreground mt-1">CSV形式に対応</p>
-                      </div>
-                    )}
-                  </label>
-                </div>
-                <Button variant="outline" className="w-full bg-transparent" onClick={() => downloadTemplate("vital")}>
                   <Download className="h-4 w-4 mr-2" />
                   テンプレートをダウンロード
                 </Button>
@@ -172,17 +120,9 @@ export function DataImport() {
                 <div className="p-4 bg-muted rounded-lg">
                   <h4 className="font-semibold mb-2">会話データ (CSV/TXT)</h4>
                   <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>必須項目: 日付、当事者ID、当事者名、会話内容</li>
+                    <li>必須項目: 日付、匿名化ID、会話内容</li>
                     <li>文字コード: UTF-8推奨</li>
                     <li>会話内容は改行を含む場合、ダブルクォートで囲んでください</li>
-                  </ul>
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <h4 className="font-semibold mb-2">バイタルデータ (CSV)</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>必須項目: 日付、当事者ID、当事者名、平均心拍数、歩数、睡眠時間</li>
-                    <li>オプション項目: ストレスレベル、活動量、その他のバイタル指標</li>
-                    <li>文字コード: UTF-8推奨</li>
                   </ul>
                 </div>
               </div>
@@ -192,7 +132,7 @@ export function DataImport() {
           <div className="flex gap-4">
             <Button
               onClick={handleImport}
-              disabled={(!conversationFile && !vitalFile) || isProcessing}
+              disabled={!conversationFile || isProcessing}
               className="flex-1 gap-2"
             >
               {isProcessing ? (
@@ -300,7 +240,7 @@ export function DataImport() {
                 {[
                   {
                     date: "2024-01-20 14:30",
-                    type: "会話データ + バイタルデータ",
+                    type: "会話データ",
                     count: 45,
                     status: "成功",
                   },
@@ -312,7 +252,7 @@ export function DataImport() {
                   },
                   {
                     date: "2024-01-15 16:45",
-                    type: "バイタルデータ",
+                    type: "会話データ",
                     count: 32,
                     status: "成功",
                   },

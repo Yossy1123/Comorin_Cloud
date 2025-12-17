@@ -175,8 +175,7 @@ export const caseCards: CaseCard[] = [
 // Function to find similar cases based on analysis data
 export function findSimilarCases(analysis: {
   riskLevel: string
-  conversationInsights: { emotion: string; communication: string }
-  vitalInsights: { stressLevel: string; activityLevel: string }
+  conversationInsights: { emotion: string; communication: string; stressLevel?: string }
   psychologicalState: Array<{ aspect: string; score: number }>
 }): Array<{
   caseCard: CaseCard
@@ -209,22 +208,13 @@ export function findSimilarCases(analysis: {
       matchingFactors.push("コミュニケーション課題")
     }
 
-    // Check stress level
+    // Check stress level from conversation insights
     if (
-      analysis.vitalInsights.stressLevel === "高" &&
+      analysis.conversationInsights.stressLevel === "高" &&
       (caseCard.tags.includes("医療連携") || caseCard.tags.includes("治療併用支援"))
     ) {
       similarity += 15
       matchingFactors.push("高ストレス状態")
-    }
-
-    // Check activity level
-    if (
-      analysis.vitalInsights.activityLevel === "やや低い" &&
-      (caseCard.tags.includes("段階支援") || caseCard.tags.includes("居場所支援"))
-    ) {
-      similarity += 10
-      matchingFactors.push("活動量低下")
     }
 
     // Check psychological state

@@ -3,7 +3,6 @@
 // 利用者の識別には匿名化ID（anonymousId）のみを使用する
 
 import { getConversationHistory } from "./mock-conversation"
-import { getActivityData, getSleepData } from "./mock-vital"
 
 export interface DailyReport {
   /** 匿名化ID（YY-NNN形式） */
@@ -15,19 +14,6 @@ export interface DailyReport {
     keyTopics: string[]
     concerns: string[]
     positivePoints: string[]
-  }
-  vitalSummary: {
-    sleepData: {
-      totalHours: number
-      sleepScore: number
-      quality: string
-    }
-    activityData: {
-      steps: number
-      activeMinutes: number
-      activityLevel: string
-    }
-    overallCondition: string
   }
   comprehensiveAssessment: {
     todayStatus: string
@@ -61,10 +47,6 @@ export async function generateDailyReport(
     const convDate = new Date(conv.timestamp).toISOString().split("T")[0]
     return convDate === reportDate && conv.patientId === patientId
   })
-
-  // Get vital data
-  const activityData = await getActivityData(patientId)
-  const sleepData = await getSleepData(patientId)
 
   // Analyze conversation
   const hasConversation = todayConversations.length > 0
@@ -113,31 +95,6 @@ export async function generateDailyReport(
     concerns.push("本日は会話セッションが記録されていません")
   }
 
-  // Vital summary
-  const sleepHours = Number.parseFloat((sleepData.lastNight.totalMinutes / 60).toFixed(1))
-  const vitalSummary = {
-    sleepData: {
-      totalHours: sleepHours,
-      sleepScore: sleepData.lastNight.sleepScore,
-      quality: sleepData.sleepQuality,
-    },
-    activityData: {
-      steps: activityData.today.steps,
-      activeMinutes: activityData.today.activeMinutes,
-      activityLevel: activityData.activityLevel,
-    },
-    overallCondition: "",
-  }
-
-  // Determine overall condition
-  if (sleepData.sleepQuality === "良好" && activityData.activityLevel === "高") {
-    vitalSummary.overallCondition = "良好"
-  } else if (sleepData.sleepQuality === "要改善" || activityData.activityLevel === "低") {
-    vitalSummary.overallCondition = "要注意"
-  } else {
-    vitalSummary.overallCondition = "普通"
-  }
-
   // Comprehensive assessment
   let todayStatus = "安定"
   let mentalState = "落ち着いている"
@@ -158,10 +115,13 @@ export async function generateDailyReport(
     }
   }
 
-  if (vitalSummary.overallCondition === "要注意") {
-    physicalState = "要改善"
-  } else if (vitalSummary.overallCondition === "良好") {
-    physicalState = "良好"
+  // Physical state is determined from conversation topics
+  if (keyTopics.includes("体調") || keyTopics.includes("睡眠")) {
+    if (concerns.some(c => c.includes("睡眠") || c.includes("体調"))) {
+      physicalState = "要改善"
+    } else {
+      physicalState = "良好"
+    }
   }
 
   const comprehensiveAssessment = {
@@ -199,7 +159,7 @@ export async function generateDailyReport(
       actionsTaken.push("外出支援の計画について相談")
     }
   } else {
-    actionsTaken.push("本日は直接的な支援活動なし（バイタルモニタリングのみ）")
+    actionsTaken.push("本日は直接的な支援活動なし")
   }
 
   const supportActions = {
@@ -211,18 +171,6 @@ export async function generateDailyReport(
   // Noteworthy observations
   const noteworthyObservations: string[] = []
 
-  if (sleepHours < 6) {
-    noteworthyObservations.push(`睡眠時間が${sleepHours}時間と短く、睡眠不足の可能性があります`)
-  }
-
-  if (activityData.today.steps < 3000) {
-    noteworthyObservations.push(`活動量が${activityData.today.steps}歩と少なく、運動不足の傾向があります`)
-  }
-
-  if (sleepData.lastNight.sleepScore >= 80 && activityData.today.steps >= 6000) {
-    noteworthyObservations.push("睡眠と活動のバランスが良好で、健康的な生活リズムが確立されています")
-  }
-
   if (hasConversation && emotionalState === "ポジティブ") {
     noteworthyObservations.push("会話中に前向きな発言が多く見られ、心理状態の改善傾向が確認できます")
   }
@@ -233,14 +181,6 @@ export async function generateDailyReport(
 
   // Next steps
   const nextSteps: string[] = []
-
-  if (sleepData.sleepQuality === "要改善") {
-    nextSteps.push("睡眠改善のための生活習慣指導を継続")
-  }
-
-  if (activityData.activityLevel === "低") {
-    nextSteps.push("段階的な活動量増加プログラムの導入を検討")
-  }
 
   if (hasConversation && keyTopics.includes("外出")) {
     nextSteps.push("外出支援の具体的なプランを作成し、次回セッションで共有")
@@ -261,14 +201,17 @@ export async function generateDailyReport(
   // Overall rating (1-5)
   let overallRating = 3
 
-  if (todayStatus === "良好" && vitalSummary.overallCondition === "良好") {
-    overallRating = 5
-  } else if (todayStatus === "良好" || vitalSummary.overallCondition === "良好") {
+  if (todayStatus === "良好") {
     overallRating = 4
-  } else if (todayStatus === "要注意" && vitalSummary.overallCondition === "要注意") {
+  } else if (todayStatus === "要注意") {
     overallRating = 2
-  } else if (todayStatus === "要注意" || vitalSummary.overallCondition === "要注意") {
-    overallRating = 3
+  }
+  
+  // Adjust rating based on conversation quality
+  if (hasConversation && positivePoints.length > concerns.length) {
+    overallRating = Math.min(5, overallRating + 1)
+  } else if (concerns.length > 2) {
+    overallRating = Math.max(1, overallRating - 1)
   }
 
   // Supporter notes
@@ -295,7 +238,6 @@ export async function generateDailyReport(
       concerns,
       positivePoints,
     },
-    vitalSummary,
     comprehensiveAssessment,
     supportActions,
     noteworthyObservations,

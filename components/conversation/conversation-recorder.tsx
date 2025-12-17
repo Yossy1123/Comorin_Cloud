@@ -12,7 +12,11 @@ import { mockSpeechToText, mockNLPAnalysis, saveConversation } from "@/lib/mock-
 import { mockPatients } from "@/lib/mock-patients"
 import { MemoUploader } from "./memo-uploader"
 
-export function ConversationRecorder() {
+interface ConversationRecorderProps {
+  onPatientSelect?: (patientId: string) => void
+}
+
+export function ConversationRecorder({ onPatientSelect }: ConversationRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [transcript, setTranscript] = useState("")
@@ -21,6 +25,14 @@ export function ConversationRecorder() {
   const [success, setSuccess] = useState(false)
   const [importedFileName, setImportedFileName] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 当事者選択時にコールバックを呼び出す
+  const handlePatientChange = (patientId: string) => {
+    setSelectedPatient(patientId)
+    if (onPatientSelect) {
+      onPatientSelect(patientId)
+    }
+  }
 
   const handleStartRecording = () => {
     setIsRecording(true)
@@ -155,10 +167,14 @@ export function ConversationRecorder() {
     <div className="space-y-6">
       {/* 当事者選択セクション */}
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+          <CardTitle>録音対象の選択</CardTitle>
+          <CardDescription>会話を記録する当事者を選択してください</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="space-y-2">
             <Label>当事者を選択</Label>
-            <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+            <Select value={selectedPatient} onValueChange={handlePatientChange}>
               <SelectTrigger>
                 <SelectValue placeholder="当事者を選択してください" />
               </SelectTrigger>

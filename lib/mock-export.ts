@@ -88,14 +88,9 @@ function generateIntegratedPDFReport(analysis: IntegratedAnalysis, patientId: st
   感情状態: ${analysis.conversationInsights.emotion}
   会話頻度: ${analysis.conversationInsights.frequency}
   コミュニケーション: ${analysis.conversationInsights.communication}
+  ストレスレベル: ${analysis.conversationInsights.stressLevel}
 
-2-2. バイタルデータ分析
-────────────────────────────────────
-  ストレスレベル: ${analysis.vitalInsights.stressLevel}
-  活動量: ${analysis.vitalInsights.activityLevel}
-  睡眠状態: ${analysis.vitalInsights.sleepQuality}
-
-2-3. AI統合分析
+2-2. AI統合分析
 ────────────────────────────────────
   ${analysis.integratedInsight}
 
@@ -106,7 +101,7 @@ function generateIntegratedPDFReport(analysis: IntegratedAnalysis, patientId: st
 ${analysis.psychologicalState.map((state) => `  ${state.aspect}: ${state.score}%`).join("\n")}
 
 所見:
-  会話データとバイタルデータを統合的に分析した結果、
+  会話データを分析した結果、
   ${analysis.overallScore >= 70 ? "心理的な安定性が向上していることが確認されました。" : "継続的な支援により改善の兆しが見られます。"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -235,11 +230,7 @@ function generateIntegratedJSONReport(analysis: IntegratedAnalysis, patientId: s
         emotion: analysis.conversationInsights.emotion,
         frequency: analysis.conversationInsights.frequency,
         communication: analysis.conversationInsights.communication,
-      },
-      vital: {
-        stressLevel: analysis.vitalInsights.stressLevel,
-        activityLevel: analysis.vitalInsights.activityLevel,
-        sleepQuality: analysis.vitalInsights.sleepQuality,
+        stressLevel: analysis.conversationInsights.stressLevel,
       },
       integratedInsight: analysis.integratedInsight,
     },

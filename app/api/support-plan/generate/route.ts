@@ -1,6 +1,6 @@
 /**
  * 個別支援計画生成API
- * OpenAI GPTを使用して、会話データとバイタルデータから支援計画を生成
+ * OpenAI GPTを使用して、会話データから支援計画を生成
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -15,17 +15,12 @@ interface GenerateSupportPlanRequest {
     stressLevel: string;
     keywords: string[];
   }>;
-  vitalData: {
-    sleepQuality: string;
-    activityLevel: string;
-    autonomicBalance: string;
-  };
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: GenerateSupportPlanRequest = await request.json();
-    const { patientId, patientName, conversationData, vitalData } = body;
+    const { patientId, patientName, conversationData } = body;
 
     // データ検証
     if (!patientId || !patientName) {
@@ -39,7 +34,6 @@ export async function POST(request: NextRequest) {
     const prompt = buildSupportPlanPrompt({
       patientName,
       conversationData,
-      vitalData,
     });
 
     // OpenAI Chat Completions APIを使用
@@ -52,13 +46,13 @@ export async function POST(request: NextRequest) {
           content: `あなたは30事例以上のひきこもり支援の実績を持つ、経験豊富な支援計画策定の専門家です。
           
 以下の役割を担ってください：
-1. 当事者の会話データとバイタルデータを総合的に分析
+1. 当事者の会話データを分析
 2. 過去の成功事例から最も適した支援方法を提案
 3. 具体的で実践可能な個別支援計画を策定
 4. リスク管理と評価指標を明確に設定
 
 提案する支援計画には以下を含めてください：
-- アセスメント結果（心理・身体・社会的側面）
+- アセスメント結果（心理・社会的側面）
 - 短期・中期・長期の目標設定
 - 具体的な支援方法とアプローチ
 - 類似事例の参照と応用ポイント
@@ -115,13 +109,8 @@ function buildSupportPlanPrompt(data: {
     stressLevel: string;
     keywords: string[];
   }>;
-  vitalData: {
-    sleepQuality: string;
-    activityLevel: string;
-    autonomicBalance: string;
-  };
 }): string {
-  const { patientName, conversationData, vitalData } = data;
+  const { patientName, conversationData } = data;
 
   // 会話データのサマリー
   const conversationSummary = conversationData.map((conv, index) => {
@@ -143,11 +132,6 @@ ${conv.transcript.substring(0, 500)}...
 ### 会話データ
 ${conversationSummary}
 
-### バイタルデータ
-- 睡眠の質: ${vitalData.sleepQuality}
-- 活動レベル: ${vitalData.activityLevel}
-- 自律神経バランス: ${vitalData.autonomicBalance}
-
 ## 依頼内容
 上記のデータを基に、${patientName}さんに最適な個別支援計画を策定してください。
 
@@ -164,11 +148,6 @@ ${conversationSummary}
       "emotion": "感情状態",
       "stressLevel": "ストレスレベル",
       "motivation": "意欲レベル"
-    },
-    "physicalState": {
-      "sleepQuality": "睡眠の質",
-      "activityLevel": "活動レベル",
-      "autonomicBalance": "自律神経バランス"
     },
     "socialState": {
       "familyRelation": "家族関係",

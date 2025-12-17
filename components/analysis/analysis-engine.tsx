@@ -205,7 +205,7 @@ export function AnalysisEngine() {
               <div className="text-center space-y-2">
                 <p className="font-semibold">AI分析を実行中...</p>
                 <p className="text-sm text-muted-foreground">
-                  {selectedAnalysisType === "daily-report" && "会話データとバイタルデータから日報を作成しています"}
+                  {selectedAnalysisType === "daily-report" && "会話データから日報を作成しています"}
                   {selectedAnalysisType === "support-plan" && useGPT && (
                     <span className="flex items-center gap-2 justify-center">
                       <Sparkles className="h-4 w-4 text-primary" />
@@ -325,8 +325,8 @@ export function AnalysisEngine() {
             <TabsContent value="integrated" className="space-y-4 mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>データソース統合</CardTitle>
-                  <CardDescription>会話データとバイタルデータの相関分析</CardDescription>
+                  <CardTitle>会話データ分析</CardTitle>
+                  <CardDescription>会話内容の総合的な分析</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -350,29 +350,6 @@ export function AnalysisEngine() {
                         </div>
                       </div>
                     </div>
-
-                    <div className="p-4 bg-muted rounded-lg">
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-primary" />
-                        バイタルデータ分析
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">ストレスレベル:</span>
-                          <Badge variant={getSeverityBadge(analysis.vitalInsights.stressLevel)}>
-                            {analysis.vitalInsights.stressLevel}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">活動量:</span>
-                          <span className="font-medium">{analysis.vitalInsights.activityLevel}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">睡眠状態:</span>
-                          <span className="font-medium">{analysis.vitalInsights.sleepQuality}</span>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
                   <Alert>
@@ -387,7 +364,7 @@ export function AnalysisEngine() {
               <Card>
                 <CardHeader>
                   <CardTitle>心理状態の推定</CardTitle>
-                  <CardDescription>会話とバイタルデータから推定される心理状態</CardDescription>
+                  <CardDescription>会話から推定される心理状態</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
