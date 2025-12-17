@@ -175,7 +175,7 @@ export function MemoUploader({ onTextExtracted, disabled = false }: MemoUploader
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileImage className="h-5 w-5" />
-          面談メモのアップロード
+          メモのアップロード
         </CardTitle>
         <CardDescription>複数の手書きメモや写真をアップロードしてテキスト化します</CardDescription>
       </CardHeader>
