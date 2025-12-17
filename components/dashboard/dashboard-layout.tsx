@@ -36,7 +36,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = [
     { id: "overview", name: "概要", icon: Home, href: "/dashboard" },
-    { id: "conversation", name: "会話データ", icon: FileText, href: "/dashboard/conversation" },
+    { id: "conversation", name: "記録アップロード", icon: FileText, href: "/dashboard/conversation" },
     { id: "vital", name: "バイタルデータ", icon: Activity, href: "/dashboard/vital" },
     { id: "analysis", name: "データ分析", icon: BarChart3, href: "/dashboard/analysis" },
     { id: "import", name: "データインポート", icon: Upload, href: "/dashboard/import" },
