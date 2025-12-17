@@ -11,7 +11,6 @@ import {
   Database,
   FileText,
   Home,
-  Upload,
 } from "lucide-react"
 
 interface DashboardLayoutProps {
@@ -37,7 +36,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { id: "overview", name: "概要", icon: Home, href: "/dashboard" },
     { id: "conversation", name: "記録アップロード", icon: FileText, href: "/dashboard/conversation" },
     { id: "analysis", name: "データ分析", icon: BarChart3, href: "/dashboard/analysis" },
-    { id: "import", name: "データインポート", icon: Upload, href: "/dashboard/import" },
   ]
 
   return (
