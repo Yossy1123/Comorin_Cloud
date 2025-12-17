@@ -14,10 +14,10 @@ const isPublicRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, req) => {
-  // 保護されたルートにアクセスする場合は認証必須
-  if (isProtectedRoute(req)) {
-    await auth.protect()
-  }
+  // MVP検証用：認証チェックを一時的に無効化
+  // if (isProtectedRoute(req)) {
+  //   await auth.protect()
+  // }
 })
 
 export const config = {

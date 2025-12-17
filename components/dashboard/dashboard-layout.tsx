@@ -24,14 +24,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const { isLoaded, isSignedIn, user } = useUser()
 
-  if (!isLoaded) {
-    return null
-  }
+  // MVP検証用：認証チェックを一時的に無効化
+  // if (!isLoaded) {
+  //   return null
+  // }
 
-  if (!isSignedIn) {
-    router.push("/sign-in")
-    return null
-  }
+  // if (!isSignedIn) {
+  //   router.push("/sign-in")
+  //   return null
+  // }
 
   const navigation = [
     { id: "overview", name: "概要", icon: Home, href: "/dashboard" },
