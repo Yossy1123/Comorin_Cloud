@@ -358,10 +358,6 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
                 <h4 className="font-semibold mb-3">食事・入浴</h4>
                 <div className="grid gap-4 md:grid-cols-2">
                   <InfoItem label="食事回数" value={data.currentLifeStatus.mealFrequency} />
-                  <InfoItem
-                    label="家族と一緒"
-                    value={data.currentLifeStatus.eatsWithFamily ? "はい" : "いいえ"}
-                  />
                   <InfoItem label="食事の問題" value={data.currentLifeStatus.hasEatingIssues} />
                   <InfoItem label="入浴頻度" value={data.currentLifeStatus.bathingFrequency} />
                 </div>
@@ -513,54 +509,88 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
 
         {/* ⑧ 希望・支援ニーズ */}
         <TabsContent value="support" className="space-y-4 mt-6">
+          {/* 本人の希望 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Heart className="h-5 w-5" />
-                希望・支援ニーズ
+                <Heart className="h-5 w-5 text-blue-500" />
+                本人の希望
               </CardTitle>
+              <CardDescription>
+                本人が支援者に伝えた希望や要望
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {data.supportNeeds.subjectHope && (
-                <Alert className="bg-blue-500/10 border-blue-500/50">
-                  <AlertDescription>
-                    <strong>本人の希望：</strong>
-                    <p className="mt-2">{data.supportNeeds.subjectHope}</p>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {data.supportNeeds.familyHope && (
-                <Alert className="bg-green-500/10 border-green-500/50">
-                  <AlertDescription>
-                    <strong>家族の希望：</strong>
-                    <p className="mt-2">{data.supportNeeds.familyHope}</p>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {data.supportNeeds.necessarySupport && (
-                <>
-                  <Separator />
-                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                    <h4 className="font-semibold mb-2">今後必要と思われる支援</h4>
-                    <p className="text-sm">{data.supportNeeds.necessarySupport}</p>
-                  </div>
-                </>
-              )}
-
-              {data.supportNeeds.partnerOrganizations && (
-                <>
-                  <Separator />
-                  <InfoItem
-                    label="支援機関連携"
-                    value={data.supportNeeds.partnerOrganizations}
-                    fullWidth
-                  />
-                </>
+            <CardContent>
+              {data.supportNeeds.subjectHope ? (
+                <div className="p-4 bg-blue-500/5 rounded-lg border border-blue-500/20">
+                  <p className="text-sm whitespace-pre-wrap">{data.supportNeeds.subjectHope}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">本人の希望は記録されていません</p>
               )}
             </CardContent>
           </Card>
+
+          {/* 家族の希望 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-green-500" />
+                家族の希望
+              </CardTitle>
+              <CardDescription>
+                家族が支援者に伝えた希望や要望
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.supportNeeds.familyHope ? (
+                <div className="p-4 bg-green-500/5 rounded-lg border border-green-500/20">
+                  <p className="text-sm whitespace-pre-wrap">{data.supportNeeds.familyHope}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">家族の希望は記録されていません</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 今後必要と思われる支援 */}
+          {data.supportNeeds.necessarySupport && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  今後必要と思われる支援
+                </CardTitle>
+                <CardDescription>
+                  支援者が判断した必要な支援内容
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <p className="text-sm whitespace-pre-wrap">{data.supportNeeds.necessarySupport}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 支援機関連携 */}
+          {data.supportNeeds.partnerOrganizations && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  支援機関連携
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InfoItem
+                  label="連携する支援機関"
+                  value={data.supportNeeds.partnerOrganizations}
+                  fullWidth
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
