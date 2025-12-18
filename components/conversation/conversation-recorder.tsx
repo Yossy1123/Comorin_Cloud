@@ -24,6 +24,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
   const [recordingTime, setRecordingTime] = useState(0)
   const [success, setSuccess] = useState(false)
   const [importedFileName, setImportedFileName] = useState("")
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 当事者選択時にコールバックを呼び出す
@@ -74,6 +75,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
       patientId: selectedPatient,
       transcript,
       analysis,
+      imageUrls: imageDataUrls.length > 0 ? imageDataUrls : undefined,
       timestamp: new Date().toISOString(),
     })
 
@@ -87,6 +89,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
       setRecordingTime(0)
       setSuccess(false)
       setImportedFileName("")
+      setImageDataUrls([])
     }, 2000)
   }
 
@@ -155,12 +158,16 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
     }
   }
 
-  const handleMemoTextExtracted = (text: string) => {
+  const handleMemoTextExtracted = (text: string, urls?: string[]) => {
     // 既存のテキストに追加する形で結合
     setTranscript((prev) => {
       const separator = prev ? "\n\n--- 面談メモより ---\n" : ""
       return prev + separator + text
     })
+    // 画像データURLを追加
+    if (urls && urls.length > 0) {
+      setImageDataUrls((prev) => [...prev, ...urls])
+    }
   }
 
   return (

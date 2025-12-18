@@ -4,6 +4,7 @@
 
 import { openai } from "./openai";
 import { db } from "./prisma";
+import { isUserAdmin } from "./auth-utils";
 
 interface SendMessageParams {
   threadId: string;
@@ -13,13 +14,16 @@ interface SendMessageParams {
 
 /**
  * メッセージを送信してAIの応答を取得
+ * 管理者の場合はuserIdチェックをスキップ
  */
 export async function sendMessage(params: SendMessageParams) {
   const { threadId, userId, content } = params;
 
+  const admin = await isUserAdmin(userId);
+
   // Thread存在確認
   const thread = await db.aiChatThread.findFirst({
-    where: { id: threadId, userId },
+    where: admin ? { id: threadId } : { id: threadId, userId },
     include: { assistant: true },
   });
 
@@ -89,11 +93,14 @@ export async function saveAssistantMessage(
 
 /**
  * Thread内のメッセージ一覧を取得
+ * 管理者の場合はuserIdチェックをスキップ
  */
 export async function getMessages(threadId: string, userId: string) {
+  const admin = await isUserAdmin(userId);
+
   // Thread存在確認
   const thread = await db.aiChatThread.findFirst({
-    where: { id: threadId, userId },
+    where: admin ? { id: threadId } : { id: threadId, userId },
   });
 
   if (!thread) {

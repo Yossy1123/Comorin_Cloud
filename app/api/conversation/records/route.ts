@@ -1,23 +1,33 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/prisma";
+import { getCurrentUser, isAdmin } from "@/lib/auth-utils";
 
 /**
  * 面談記録一覧を取得するAPIエンドポイント
  * 利用者IDごとにグループ化して返す
+ * 管理者：全ての記録を取得
+ * 一般ユーザー：自分が担当する記録のみ取得
  */
 export async function GET() {
   try {
-    // MVP検証用：認証チェックを一時的に無効化
-    // const { userId } = await auth();
-    // if (!userId) {
-    //   return NextResponse.json(
-    //     { error: "認証が必要です" },
-    //     { status: 401 }
-    //   );
-    // }
+    // 認証チェック
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: "認証が必要です" },
+        { status: 401 }
+      );
+    }
+
+    // 管理者かどうかを判定
+    const admin = await isAdmin();
 
     // 面談記録を取得（Conversationテーブル）
     const conversations = await db.conversation.findMany({
+      where: admin ? {} : {
+        // 一般ユーザーは自分が担当する記録のみ
+        supporterId: currentUser.id,
+      },
       include: {
         patient: {
           select: {

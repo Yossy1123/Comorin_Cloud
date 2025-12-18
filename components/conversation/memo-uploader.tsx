@@ -8,7 +8,7 @@ import { FileImage, Loader2, Upload, X } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 
 interface MemoUploaderProps {
-  onTextExtracted: (text: string) => void
+  onTextExtracted: (text: string, imageDataUrls?: string[]) => void
   disabled?: boolean
 }
 
@@ -18,6 +18,7 @@ interface UploadedFile {
   previewUrl: string
   status: "pending" | "processing" | "completed" | "error"
   extractedText?: string
+  imageDataUrl?: string
   errorMessage?: string
 }
 
@@ -97,6 +98,7 @@ export function MemoUploader({ onTextExtracted, disabled = false }: MemoUploader
 
     const pendingFiles = uploadedFiles.filter((f) => f.status === "pending")
     const extractedTexts: string[] = []
+    const imageDataUrls: string[] = []
 
     for (let i = 0; i < pendingFiles.length; i++) {
       const uploadedFile = pendingFiles[i]
@@ -122,17 +124,21 @@ export function MemoUploader({ onTextExtracted, disabled = false }: MemoUploader
 
         const data = await response.json()
         const extractedText = data.text
+        const imageDataUrl = data.imageDataUrl
 
         // ステータスを「完了」に更新
         setUploadedFiles((prev) =>
           prev.map((f) =>
             f.id === uploadedFile.id
-              ? { ...f, status: "completed" as const, extractedText }
+              ? { ...f, status: "completed" as const, extractedText, imageDataUrl }
               : f
           )
         )
 
         extractedTexts.push(`--- ${uploadedFile.file.name} ---\n${extractedText}`)
+        if (imageDataUrl) {
+          imageDataUrls.push(imageDataUrl)
+        }
         setIsMockMode(data.isMock || false)
       } catch (err) {
         console.error("OCR処理エラー:", err)
@@ -152,9 +158,9 @@ export function MemoUploader({ onTextExtracted, disabled = false }: MemoUploader
       setProcessingProgress(((i + 1) / pendingFiles.length) * 100)
     }
 
-    // すべての抽出されたテキストを結合して親コンポーネントに渡す
+    // すべての抽出されたテキストと画像データURLを親コンポーネントに渡す
     if (extractedTexts.length > 0) {
-      onTextExtracted(extractedTexts.join("\n\n"))
+      onTextExtracted(extractedTexts.join("\n\n"), imageDataUrls)
     }
 
     setIsProcessing(false)

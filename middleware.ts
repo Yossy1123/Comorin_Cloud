@@ -11,13 +11,19 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/api/webhooks/(.*)', // Webhookは認証不要
 ])
 
 export default clerkMiddleware(async (auth, req) => {
-  // MVP検証用：認証チェックを一時的に無効化
-  // if (isProtectedRoute(req)) {
-  //   await auth.protect()
-  // }
+  // 公開ルートは認証不要
+  if (isPublicRoute(req)) {
+    return
+  }
+
+  // 保護されたルートは認証が必要
+  if (isProtectedRoute(req)) {
+    await auth.protect()
+  }
 })
 
 export const config = {

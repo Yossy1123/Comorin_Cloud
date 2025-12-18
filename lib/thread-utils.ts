@@ -4,6 +4,7 @@
 
 import { openai } from "./openai";
 import { db } from "./prisma";
+import { isUserAdmin } from "./auth-utils";
 
 interface CreateThreadParams {
   assistantId: string;
@@ -46,10 +47,13 @@ export async function createThread(params: CreateThreadParams) {
 
 /**
  * ユーザーのThread一覧を取得
+ * 管理者の場合は全てのThreadを取得
  */
 export async function getUserThreads(userId: string) {
+  const admin = await isUserAdmin(userId);
+
   const threads = await db.aiChatThread.findMany({
-    where: { userId },
+    where: admin ? {} : { userId },
     orderBy: { updatedAt: "desc" },
     include: {
       messages: {
@@ -69,10 +73,13 @@ export async function getUserThreads(userId: string) {
 
 /**
  * Thread詳細を取得
+ * 管理者の場合はuserIdチェックをスキップ
  */
 export async function getThread(threadId: string, userId: string) {
+  const admin = await isUserAdmin(userId);
+
   const thread = await db.aiChatThread.findFirst({
-    where: { id: threadId, userId },
+    where: admin ? { id: threadId } : { id: threadId, userId },
     include: {
       messages: {
         orderBy: { createdAt: "asc" },
@@ -90,10 +97,13 @@ export async function getThread(threadId: string, userId: string) {
 
 /**
  * Threadを削除
+ * 管理者の場合はuserIdチェックをスキップ
  */
 export async function deleteThread(threadId: string, userId: string) {
+  const admin = await isUserAdmin(userId);
+
   const thread = await db.aiChatThread.findFirst({
-    where: { id: threadId, userId },
+    where: admin ? { id: threadId } : { id: threadId, userId },
   });
 
   if (!thread) {

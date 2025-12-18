@@ -93,6 +93,7 @@ model Conversation {
   // 会話データ
   transcript  String   @db.Text        // テキスト化された会話内容
   audioUrl    String?                  // 音声ファイルのURL（オプション、将来実装）
+  imageUrls   Json?                    // 画像ファイルのURL配列（オプション）string[]
   
   // 分析結果（JSON形式）
   sentiment   Json?                    // 感情分析結果 { emotion: string, confidence: number }

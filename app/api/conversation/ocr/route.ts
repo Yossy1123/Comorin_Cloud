@@ -7,9 +7,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
 import { mockOCRProcessing } from "@/lib/mock-ocr";
+import { requireAuth } from "@/lib/auth-utils";
 
 export async function POST(request: NextRequest) {
   try {
+    // 認証チェック
+    await requireAuth();
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -95,10 +99,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 画像をBase64データURLとして保存（ダウンロード用）
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const base64Image = buffer.toString("base64");
+    const imageDataUrl = `data:${file.type};base64,${base64Image}`;
+
     return NextResponse.json({
       success: true,
       text: extractedText,
       fileName: file.name,
+      imageDataUrl, // 画像のBase64データURL
       isMock, // モック使用の有無をフロントエンドに通知
     });
   } catch (error) {
