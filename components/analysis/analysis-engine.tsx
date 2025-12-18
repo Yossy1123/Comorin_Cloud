@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { generateSupportPlan, exportSupportPlan, type SupportPlan } from "@/lib/support-plan"
 import { SupportPlanView } from "./support-plan-view"
-import { Loader2, Download, ClipboardList, Sparkles, Brain } from "lucide-react"
+import { Loader2, Download, ClipboardList, Sparkles, Brain, AlertCircle } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { mockPatients } from "@/lib/mock-patients"
 
 export function AnalysisEngine() {
@@ -17,9 +18,45 @@ export function AnalysisEngine() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [useGPT, setUseGPT] = useState(true) // GPT連携をデフォルトで有効化
+  const [hasAssessment, setHasAssessment] = useState(false)
+  const [isCheckingAssessment, setIsCheckingAssessment] = useState(false)
+
+  // 当事者選択時にアセスメントの存在をチェック
+  useEffect(() => {
+    async function checkAssessment() {
+      if (!selectedPatient) {
+        setHasAssessment(false)
+        return
+      }
+
+      setIsCheckingAssessment(true)
+      try {
+        const response = await fetch(`/api/assessment/${selectedPatient}`)
+        if (response.ok) {
+          const data = await response.json()
+          setHasAssessment(data.hasAssessment)
+        } else {
+          setHasAssessment(false)
+        }
+      } catch (error) {
+        console.error("アセスメントチェックエラー:", error)
+        setHasAssessment(false)
+      } finally {
+        setIsCheckingAssessment(false)
+      }
+    }
+
+    checkAssessment()
+  }, [selectedPatient])
 
   const handleAnalyze = async () => {
     if (!selectedPatient) return
+
+    // アセスメントがない場合は実行しない
+    if (!hasAssessment) {
+      alert("この当事者のアセスメントデータがアップロードされていません。\n管理者にアセスメントシートのアップロードを依頼してください。")
+      return
+    }
 
     setIsAnalyzing(true)
     
@@ -76,6 +113,30 @@ export function AnalysisEngine() {
 
           {selectedPatient && (
             <div className="space-y-4 pt-2">
+              {/* アセスメント状態の表示 */}
+              {isCheckingAssessment ? (
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>アセスメントデータを確認中...</span>
+                </div>
+              ) : hasAssessment ? (
+                <Alert className="bg-green-500/10 border-green-500/50">
+                  <AlertCircle className="h-4 w-4 text-green-500" />
+                  <AlertDescription className="text-green-700 dark:text-green-400">
+                    アセスメントデータが登録されています。個別支援計画を生成できます。
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    この当事者のアセスメントデータがまだアップロードされていません。
+                    <br />
+                    管理者にアセスメントシートのアップロードを依頼してください。
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* GPT連携の切り替え */}
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <div className="flex items-center gap-3">
@@ -98,18 +159,20 @@ export function AnalysisEngine() {
 
               <Button
                 onClick={handleAnalyze}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || !hasAssessment || isCheckingAssessment}
                 variant="outline"
-                className="w-full h-auto py-6 flex flex-col gap-2 hover:bg-primary/10 hover:border-primary relative"
+                className="w-full h-auto py-6 flex flex-col gap-2 hover:bg-primary/10 hover:border-primary relative disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {useGPT && (
+                {useGPT && hasAssessment && (
                   <span className="absolute top-2 right-2">
                     <Sparkles className="h-4 w-4 text-primary" />
                   </span>
                 )}
                 <ClipboardList className="h-6 w-6" />
-                <span className="font-semibold">個別支援計画を生成</span>
-                {useGPT && (
+                <span className="font-semibold">
+                  {hasAssessment ? "個別支援計画を生成" : "アセスメント登録待ち"}
+                </span>
+                {useGPT && hasAssessment && (
                   <span className="text-xs text-primary">AI推奨</span>
                 )}
               </Button>

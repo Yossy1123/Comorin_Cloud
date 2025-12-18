@@ -74,6 +74,7 @@ model Patient {
   vitalData       VitalData[]
   supportRecords  SupportRecord[]
   analysisResults AnalysisResult[]
+  assessments     Assessment[]
   
   @@index([anonymousId])
   @@index([registeredAt])
@@ -382,5 +383,38 @@ model AiChatFile {
   @@index([openaiFileId])
   @@index([vectorStoreId])
   @@map("ai_chat_files")
+}
+
+// ======================================
+// アセスメント管理
+// ======================================
+
+/// アセスメント - 当事者のアセスメントシートデータ
+/// 
+/// 【重要】個人情報保護のため、アセスメントシート内の氏名・住所・連絡先等は記録しない
+/// 管理者が手動でアップロードしたアセスメントデータを保持する
+model Assessment {
+  id              String   @id @default(uuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // アセスメントデータ（JSON形式）
+  // AssessmentData型に準拠したJSON構造
+  data            Json                         // 全アセスメントデータ
+  
+  // アップロード情報
+  uploadedBy      String                       // アップロードした管理者のID
+  sourceText      String?  @db.Text            // 元のテキストデータ（オプション）
+  
+  // メタデータ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // 抽出精度（GPT抽出を使用した場合）
+  extractionConfidence Int?                     // 抽出精度（0-100）
+  
+  @@index([patientId, createdAt(sort: Desc)])
+  @@index([uploadedBy])
+  @@map("assessments")
 }
 

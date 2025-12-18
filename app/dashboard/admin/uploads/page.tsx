@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   FileText, 
@@ -27,11 +28,15 @@ import {
   Code,
   Copy,
   CheckCircle,
-  Image
+  Image,
+  ClipboardList,
+  Upload,
+  Loader2
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { extractAssessmentFromText } from "@/lib/assessment-extraction"
 
 interface ConversationData {
   id: string
@@ -73,6 +78,12 @@ export default function AdminUploadsPage() {
     dateFrom: "",
     dateTo: "",
   })
+  
+  // アセスメント作成用の状態
+  const [assessmentDialogOpen, setAssessmentDialogOpen] = useState(false)
+  const [selectedConversation, setSelectedConversation] = useState<ConversationData | null>(null)
+  const [isUploadingAssessment, setIsUploadingAssessment] = useState(false)
+  const [assessmentUploadSuccess, setAssessmentUploadSuccess] = useState(false)
 
   // ユニークな支援者リストを取得
   const supporters = Array.from(
@@ -223,6 +234,62 @@ export default function AdminUploadsPage() {
         handleDownloadImage(url, index, conversationId)
       }, index * 100) // 100msずつずらしてダウンロード
     })
+  }
+
+  // アセスメント作成ダイアログを開く
+  const handleOpenAssessmentDialog = (conversation: ConversationData) => {
+    setSelectedConversation(conversation)
+    setAssessmentDialogOpen(true)
+    setAssessmentUploadSuccess(false)
+  }
+
+  // Wordファイルアップロード処理
+  const handleAssessmentFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !selectedConversation) return
+
+    // .docx ファイルのみ許可
+    if (!file.name.endsWith('.docx') && !file.name.endsWith('.doc')) {
+      alert('Word形式のファイル（.docx, .doc）のみアップロード可能です')
+      return
+    }
+
+    setIsUploadingAssessment(true)
+    setAssessmentUploadSuccess(false)
+
+    try {
+      // FormDataを使ってファイルをAPIに送信
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('patientId', selectedConversation.patientId)
+
+      const response = await fetch('/api/assessment/upload-word', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'アップロードに失敗しました')
+      }
+
+      // 成功
+      setAssessmentUploadSuccess(true)
+      
+      // 2秒後にダイアログを閉じる
+      setTimeout(() => {
+        setAssessmentDialogOpen(false)
+        setSelectedConversation(null)
+        setAssessmentUploadSuccess(false)
+      }, 2000)
+    } catch (err) {
+      console.error('アセスメントアップロードエラー:', err)
+      alert(err instanceof Error ? err.message : 'アップロードに失敗しました')
+    } finally {
+      setIsUploadingAssessment(false)
+      // ファイル入力をリセット
+      event.target.value = ''
+    }
   }
 
   if (roleLoading || !isAdmin) {
@@ -584,6 +651,17 @@ export default function AdminUploadsPage() {
                         画像ダウンロード ({conversation.imageUrls.length}枚)
                       </Button>
                     )}
+
+                    {/* アセスメント作成ボタン */}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="gap-2 bg-green-600 hover:bg-green-700"
+                      onClick={() => handleOpenAssessmentDialog(conversation)}
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      アセスメント作成
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -591,6 +669,69 @@ export default function AdminUploadsPage() {
           )}
         </div>
       )}
+
+      {/* アセスメント作成ダイアログ */}
+      <Dialog open={assessmentDialogOpen} onOpenChange={setAssessmentDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>アセスメント作成</DialogTitle>
+            <DialogDescription>
+              Word形式のアセスメントシートをアップロードしてください
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedConversation && (
+            <div className="space-y-4">
+              <Alert>
+                <User className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>対象当事者:</strong> {selectedConversation.patientAnonymousId}
+                </AlertDescription>
+              </Alert>
+
+              {assessmentUploadSuccess ? (
+                <Alert className="bg-green-500/10 border-green-500/50">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <AlertDescription className="text-green-700 dark:text-green-400">
+                    アセスメントが正常にアップロードされました
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="assessment-file" className="text-sm font-medium">
+                      Wordファイルを選択
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="assessment-file"
+                        type="file"
+                        accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={handleAssessmentFileUpload}
+                        disabled={isUploadingAssessment}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      ※ .docx または .doc 形式のファイルをアップロードしてください<br />
+                      ※ AIが自動的にテキストを抽出し、構造化データに変換します
+                    </p>
+                  </div>
+
+                  {isUploadingAssessment && (
+                    <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">
+                        アップロード中...（テキスト抽出とAI分析を実行しています）
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
