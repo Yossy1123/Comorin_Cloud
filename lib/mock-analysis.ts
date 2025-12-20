@@ -3,7 +3,6 @@
 // 利用者の識別には匿名化ID（anonymousId）のみを使用する
 
 import { getConversationHistory } from "./mock-conversation"
-import { getVitalHistory } from "./mock-vital"
 import { findSimilarCases, type CaseCard } from "./mock-case-cards"
 import { formatAnonymousIdForDisplay } from "./anonymous-id"
 
@@ -18,11 +17,7 @@ export interface IntegratedAnalysis {
     emotion: string
     frequency: string
     communication: string
-  }
-  vitalInsights: {
     stressLevel: string
-    activityLevel: string
-    sleepQuality: string
   }
   integratedInsight: string
   psychologicalState: Array<{
@@ -56,9 +51,8 @@ export async function integrateAndAnalyze(patientId: string): Promise<Integrated
   // Simulate AI processing time
   await new Promise((resolve) => setTimeout(resolve, 2500))
 
-  // Get conversation and vital data
+  // Get conversation data
   const conversations = getConversationHistory()
-  const vitalHistory = getVitalHistory(patientId)
 
   // 【匿名化対応】利用者は匿名化IDのみで識別される
   // patientIdは匿名化ID（YY-NNN形式）として扱う
@@ -66,7 +60,6 @@ export async function integrateAndAnalyze(patientId: string): Promise<Integrated
 
   // Calculate mock scores based on data
   const hasConversations = conversations.length > 0
-  const hasVitals = vitalHistory.length > 0
 
   const overallScore = Math.floor(Math.random() * 30) + 50 // 50-80
   let riskLevel = "中"
@@ -88,21 +81,15 @@ export async function integrateAndAnalyze(patientId: string): Promise<Integrated
     emotion: emotions[Math.floor(Math.random() * emotions.length)],
     frequency: hasConversations ? "週2-3回" : "データ不足",
     communication: hasConversations ? "良好" : "改善が必要",
-  }
-
-  // Vital insights
-  const vitalInsights = {
     stressLevel: riskLevel,
-    activityLevel: hasVitals ? "やや低い" : "データ不足",
-    sleepQuality: hasVitals ? "改善傾向" : "データ不足",
   }
 
   // Integrated insight
   const integratedInsight =
     riskLevel === "低"
-      ? "会話データとバイタルデータの両方から、心理状態の改善傾向が見られます。現在の支援アプローチを継続することで、さらなる改善が期待できます。"
+      ? "会話データから、心理状態の改善傾向が見られます。現在の支援アプローチを継続することで、さらなる改善が期待できます。"
       : riskLevel === "高"
-        ? "会話データからは不安傾向が、バイタルデータからはストレスの高まりが確認されます。早期の介入と支援強化が推奨されます。"
+        ? "会話データから不安傾向が確認されます。早期の介入と支援強化が推奨されます。"
         : "全体的に安定した状態ですが、一部に改善の余地があります。継続的なモニタリングと段階的な支援が効果的です。"
 
   // Psychological state
@@ -133,7 +120,7 @@ export async function integrateAndAnalyze(patientId: string): Promise<Integrated
     {
       title: "生活リズムの改善",
       description:
-        "規則的な起床・就寝時間を設定し、日中の活動時間を確保します。バイタルデータから睡眠の質の改善が見られています。",
+        "規則的な起床・就寝時間を設定し、日中の活動時間を確保します。生活習慣の改善により、ストレス管理能力の向上が期待できます。",
       category: "生活習慣",
       priority: "中",
     },
@@ -188,7 +175,6 @@ export async function integrateAndAnalyze(patientId: string): Promise<Integrated
   const recommendedCases = findSimilarCases({
     riskLevel,
     conversationInsights,
-    vitalInsights,
     psychologicalState,
   })
 
@@ -207,7 +193,6 @@ export async function integrateAndAnalyze(patientId: string): Promise<Integrated
     supportDuration,
     improvementTrend,
     conversationInsights,
-    vitalInsights,
     integratedInsight,
     psychologicalState,
     recommendations,

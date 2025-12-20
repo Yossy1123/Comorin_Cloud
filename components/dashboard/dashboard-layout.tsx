@@ -5,15 +5,19 @@ import type React from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { ClerkUserButton } from "@/components/auth/user-button"
+import { LogoutButton } from "@/components/auth/logout-button"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   BarChart3,
   Database,
   FileText,
   Home,
-  Activity,
+  Shield,
+  Users,
   Upload,
 } from "lucide-react"
+import { useUserRole } from "@/hooks/use-user-role"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -22,10 +26,19 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { isLoaded, isSignedIn, user } = useUser()
+  const { isLoaded, isSignedIn } = useUser()
+  const { isAdmin, isLoading: roleLoading } = useUserRole()
 
-  if (!isLoaded) {
-    return null
+  // 認証チェック
+  if (!isLoaded || roleLoading) {
+    return (
+      <div className="min-h-screen bg-background dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">読み込み中...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isSignedIn) {
@@ -33,13 +46,20 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     return null
   }
 
-  const navigation = [
+  // 基本ナビゲーション
+  const baseNavigation = [
     { id: "overview", name: "概要", icon: Home, href: "/dashboard" },
-    { id: "conversation", name: "会話データ", icon: FileText, href: "/dashboard/conversation" },
-    { id: "vital", name: "バイタルデータ", icon: Activity, href: "/dashboard/vital" },
+    { id: "conversation", name: "記録アップロード", icon: FileText, href: "/dashboard/conversation" },
     { id: "analysis", name: "データ分析", icon: BarChart3, href: "/dashboard/analysis" },
-    { id: "import", name: "データインポート", icon: Upload, href: "/dashboard/import" },
   ]
+
+  // 管理者専用ナビゲーション
+  const adminNavigation = [
+    { id: "uploads", name: "アップロードデータ", icon: Upload, href: "/dashboard/admin/uploads", adminOnly: true },
+    { id: "users", name: "ユーザー管理", icon: Users, href: "/dashboard/admin/users", adminOnly: true },
+  ]
+
+  const navigation = isAdmin ? [...baseNavigation, ...adminNavigation] : baseNavigation
 
   return (
     <div className="min-h-screen bg-background dark">
@@ -52,6 +72,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           <div className="ml-auto flex items-center gap-4">
+            {isAdmin && (
+              <Badge variant="default" className="flex items-center gap-1">
+                <Shield className="h-3 w-3" />
+                管理者
+              </Badge>
+            )}
+            <LogoutButton />
             <ClerkUserButton />
           </div>
         </div>
@@ -59,9 +86,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-border bg-card min-h-[calc(100vh-4rem)]">
-          <nav className="flex flex-col gap-1 p-4">
-            {navigation.map((item) => {
+        <aside className="w-64 border-r border-border bg-card min-h-[calc(100vh-4rem)] flex flex-col">
+          <nav className="flex flex-col gap-1 p-4 flex-1">
+            {navigation.map((item: any) => {
               const Icon = item.icon
               const isActive = pathname === item.href
               return (
@@ -77,10 +104,20 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 >
                   <Icon className="mr-2 h-4 w-4" />
                   {item.name}
+                  {item.adminOnly && (
+                    <Badge variant="outline" className="ml-auto text-xs">
+                      管理者
+                    </Badge>
+                  )}
                 </Button>
               )
             })}
           </nav>
+          
+          {/* ログアウトボタン */}
+          <div className="p-4 border-t border-border">
+            <LogoutButton />
+          </div>
         </aside>
 
         {/* Main Content */}

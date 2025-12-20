@@ -3,7 +3,6 @@
 // 利用者の識別には匿名化ID（anonymousId）のみを使用する
 
 import { getConversationHistory } from "./mock-conversation"
-import { getActivityData, getSleepData, analyzeAutonomicNervousSystem } from "./mock-vital"
 import { findSimilarCases } from "./mock-case-cards"
 
 export interface SupportGoal {
@@ -124,12 +123,9 @@ export async function generateSupportPlan(
   nextEvalDate.setMonth(nextEvalDate.getMonth() + 3)
   const nextEvaluationDate = nextEvalDate.toISOString().split("T")[0]
 
-  // Get conversation and vital data
+  // Get conversation data
   const conversations = getConversationHistory()
   const patientConversations = conversations.filter((conv) => conv.patientId === patientId)
-  const activityData = await getActivityData(patientId)
-  const sleepData = await getSleepData(patientId)
-  const autonomicData = await analyzeAutonomicNervousSystem(patientId)
 
   // Analyze current status
   let currentStatus = "支援開始期"
@@ -154,21 +150,11 @@ export async function generateSupportPlan(
     }
   }
 
-  // Determine strengths and challenges
+  // Determine strengths and challenges based on conversation data
   const strengths: string[] = []
   const challenges: string[] = []
 
-  if (sleepData.sleepQuality === "良好") {
-    strengths.push("規則正しい睡眠習慣が確立されている")
-  } else {
-    challenges.push("睡眠の質の改善が必要")
-  }
-
-  if (activityData.activityLevel === "高") {
-    strengths.push("日常的な活動量が十分に確保されている")
-  } else if (activityData.activityLevel === "低") {
-    challenges.push("活動量が不足しており、段階的な増加が必要")
-  }
+  // Strengths and challenges are determined from conversation analysis
 
   if (emotion === "ポジティブ") {
     strengths.push("前向きな思考や意欲の向上が見られる")
@@ -193,52 +179,19 @@ export async function generateSupportPlan(
       stressLevel,
       motivation,
     },
-    physicalState: {
-      sleepQuality: sleepData.sleepQuality,
-      activityLevel: activityData.activityLevel,
-      autonomicBalance: autonomicData.balanceStatus,
-    },
     socialState: {
       familyRelation: patientConversations.some((c) => c.analysis.keywords.includes("家族関係"))
         ? "改善の兆しあり"
         : "要支援",
       communicationSkill: patientConversations.length > 3 ? "向上中" : "段階的な改善が必要",
-      externalEngagement: activityData.today.steps > 5000 ? "一部活動あり" : "限定的",
+      externalEngagement: patientConversations.length > 2 ? "一部活動あり" : "限定的",
     },
   }
 
-  // Support goals
+  // Support goals based on conversation analysis
   const goals: SupportGoal[] = []
 
   // Short-term goals (1-3 months)
-  if (sleepData.sleepQuality === "要改善") {
-    goals.push({
-      term: "短期",
-      period: "1-3ヶ月",
-      goal: "生活リズムの安定化",
-      specificActions: [
-        "就寝・起床時刻を記録し、規則的なリズムを確立する",
-        "就寝前のリラックスルーティンを導入する",
-        "日中の活動時間を確保し、夜間の睡眠の質を向上させる",
-      ],
-      successCriteria: ["睡眠時間が平均7時間以上", "睡眠スコアが70点以上", "規則的な就寝・起床時刻の維持"],
-    })
-  }
-
-  if (activityData.activityLevel === "低") {
-    goals.push({
-      term: "短期",
-      period: "1-3ヶ月",
-      goal: "段階的な活動量の増加",
-      specificActions: [
-        "1日15分の散歩から開始する",
-        "週2-3回、近所への外出を実施する",
-        "家の中での軽い運動やストレッチを取り入れる",
-      ],
-      successCriteria: ["1日の歩数が3,000歩以上", "週3回以上の外出", "活動に対する抵抗感の軽減"],
-    })
-  }
-
   goals.push({
     term: "短期",
     period: "1-3ヶ月",
@@ -452,12 +405,7 @@ export async function generateSupportPlan(
   // Similar cases
   const similarCases = findSimilarCases({
     riskLevel,
-    conversationInsights: { emotion, frequency: "週2-3回", communication: "良好" },
-    vitalInsights: {
-      stressLevel,
-      activityLevel: activityData.activityLevel,
-      sleepQuality: sleepData.sleepQuality,
-    },
+    conversationInsights: { emotion, communication: "良好", stressLevel },
     psychologicalState: [],
   })
 
@@ -482,16 +430,6 @@ export async function generateSupportPlan(
     identifiedRisks.push("支援関係の構築困難リスク")
     preventiveMeasures.push("頻繁なコンタクトと状態確認")
     preventiveMeasures.push("専門家との連携体制の確保")
-  }
-
-  if (sleepData.sleepQuality === "要改善") {
-    identifiedRisks.push("睡眠障害による心身の健康悪化")
-    preventiveMeasures.push("必要に応じて医療機関への相談を推奨")
-  }
-
-  if (activityData.activityLevel === "低") {
-    identifiedRisks.push("活動不足による身体機能の低下")
-    preventiveMeasures.push("無理のない範囲での活動促進")
   }
 
   identifiedRisks.push("支援への拒否感や抵抗")
@@ -545,11 +483,6 @@ export async function generateSupportPlanWithGPT(
     const conversations = getConversationHistory();
     const patientConversations = conversations.filter((conv) => conv.patientId === patientId);
 
-    // バイタルデータを取得（モック）
-    const activityData = await getActivityData(patientId);
-    const sleepData = await getSleepData(patientId);
-    const autonomicData = await analyzeAutonomicNervousSystem(patientId);
-
     // 【匿名化対応】APIリクエストには名前を含めない
     const requestData = {
       patientId,
@@ -559,11 +492,6 @@ export async function generateSupportPlanWithGPT(
         stressLevel: conv.analysis.stressLevel,
         keywords: conv.analysis.keywords,
       })),
-      vitalData: {
-        sleepQuality: sleepData.sleepQuality,
-        activityLevel: activityData.activityLevel,
-        autonomicBalance: autonomicData.balanceStatus,
-      },
     };
 
     // APIエンドポイントを呼び出し

@@ -12,7 +12,11 @@ import { mockSpeechToText, mockNLPAnalysis, saveConversation } from "@/lib/mock-
 import { mockPatients } from "@/lib/mock-patients"
 import { MemoUploader } from "./memo-uploader"
 
-export function ConversationRecorder() {
+interface ConversationRecorderProps {
+  onPatientSelect?: (patientId: string) => void
+}
+
+export function ConversationRecorder({ onPatientSelect }: ConversationRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [transcript, setTranscript] = useState("")
@@ -20,7 +24,16 @@ export function ConversationRecorder() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [success, setSuccess] = useState(false)
   const [importedFileName, setImportedFileName] = useState("")
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 当事者選択時にコールバックを呼び出す
+  const handlePatientChange = (patientId: string) => {
+    setSelectedPatient(patientId)
+    if (onPatientSelect) {
+      onPatientSelect(patientId)
+    }
+  }
 
   const handleStartRecording = () => {
     setIsRecording(true)
@@ -62,6 +75,7 @@ export function ConversationRecorder() {
       patientId: selectedPatient,
       transcript,
       analysis,
+      imageUrls: imageDataUrls.length > 0 ? imageDataUrls : undefined,
       timestamp: new Date().toISOString(),
     })
 
@@ -75,6 +89,7 @@ export function ConversationRecorder() {
       setRecordingTime(0)
       setSuccess(false)
       setImportedFileName("")
+      setImageDataUrls([])
     }, 2000)
   }
 
@@ -143,26 +158,30 @@ export function ConversationRecorder() {
     }
   }
 
-  const handleMemoTextExtracted = (text: string) => {
+  const handleMemoTextExtracted = (text: string, urls?: string[]) => {
     // 既存のテキストに追加する形で結合
     setTranscript((prev) => {
       const separator = prev ? "\n\n--- 面談メモより ---\n" : ""
       return prev + separator + text
     })
+    // 画像データURLを追加
+    if (urls && urls.length > 0) {
+      setImageDataUrls((prev) => [...prev, ...urls])
+    }
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>会話の録音</CardTitle>
-            <CardDescription>支援セッションの会話を録音してテキスト化します</CardDescription>
-          </CardHeader>
-        <CardContent className="space-y-4">
+      {/* 当事者選択セクション */}
+      <Card>
+        <CardHeader>
+          <CardTitle>録音対象の選択</CardTitle>
+          <CardDescription>会話を記録する当事者を選択してください</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="space-y-2">
             <Label>当事者を選択</Label>
-            <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+            <Select value={selectedPatient} onValueChange={handlePatientChange}>
               <SelectTrigger>
                 <SelectValue placeholder="当事者を選択してください" />
               </SelectTrigger>
@@ -175,64 +194,41 @@ export function ConversationRecorder() {
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="flex flex-col items-center justify-center py-8 space-y-4">
-            {isRecording && <div className="text-4xl font-mono text-primary">{formatTime(recordingTime)}</div>}
-
-            <div className="flex gap-4">
-              {!isRecording ? (
-                <Button
-                  size="lg"
-                  onClick={handleStartRecording}
-                  disabled={!selectedPatient || isProcessing}
-                  className="gap-2"
-                >
-                  <Mic className="h-5 w-5" />
-                  録音開始
-                </Button>
-              ) : (
-                <Button size="lg" variant="destructive" onClick={handleStopRecording} className="gap-2">
-                  <Square className="h-5 w-5" />
-                  録音停止
-                </Button>
-              )}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>音声データのアップロード</CardTitle>
+            <CardDescription>支援における録音データやその他の音声データをアップロードしてテキスト化します</CardDescription>
+          </CardHeader>
+        <CardContent className="space-y-4">
+          {/* データインポート */}
+          <div className="flex flex-col items-center justify-center py-8 space-y-4 border-2 border-dashed rounded-lg">
+            <FileText className="h-12 w-12 text-muted-foreground" />
+            <div className="text-center space-y-2">
+              <p className="text-sm text-muted-foreground">音声データをアップロード</p>
+              <p className="text-xs text-muted-foreground">MP3、M4A、TXT、CSV</p>
             </div>
-
-            {isRecording && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
-                録音中...
-              </div>
-            )}
-
-            {/* 録音データインポート */}
-            {!isRecording && (
-              <div className="w-full border-t pt-4 mt-4">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".mp3,.m4a,.txt,.csv,audio/mpeg,audio/mp4,audio/x-m4a,text/plain,text/csv"
-                  onChange={handleFileImport}
-                  className="hidden"
-                />
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handleImportButtonClick}
-                  disabled={!selectedPatient || isProcessing}
-                  className="w-full gap-2"
-                >
-                  <FileText className="h-5 w-5" />
-                  データをインポート
-                </Button>
-                <div className="mt-2 text-xs text-center text-muted-foreground">
-                  音声ファイル（mp3, m4a）またはテキストファイル（txt, csv）
-                </div>
-                {importedFileName && (
-                  <div className="mt-1 text-xs text-center text-muted-foreground font-medium">
-                    インポート済み: {importedFileName}
-                  </div>
-                )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".mp3,.m4a,.txt,.csv,audio/mpeg,audio/mp4,audio/x-m4a,text/plain,text/csv"
+              onChange={handleFileImport}
+              className="hidden"
+            />
+            <Button
+              onClick={handleImportButtonClick}
+              disabled={!selectedPatient || isProcessing}
+              className="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              ファイルを選択
+            </Button>
+            {importedFileName && (
+              <div className="text-xs text-center text-muted-foreground font-medium">
+                インポート済み: {importedFileName}
               </div>
             )}
           </div>
@@ -252,6 +248,11 @@ export function ConversationRecorder() {
         </CardContent>
       </Card>
 
+      {/* 面談メモアップロードセクション */}
+      <MemoUploader onTextExtracted={handleMemoTextExtracted} disabled={!selectedPatient || isProcessing} />
+      </div>
+
+      {/* テキスト編集セクション */}
       <Card>
         <CardHeader>
           <CardTitle>テキスト編集</CardTitle>
@@ -288,10 +289,6 @@ export function ConversationRecorder() {
           </Button>
         </CardContent>
       </Card>
-      </div>
-
-      {/* 面談メモアップロードセクション */}
-      <MemoUploader onTextExtracted={handleMemoTextExtracted} disabled={!selectedPatient || isProcessing} />
     </div>
   )
 }

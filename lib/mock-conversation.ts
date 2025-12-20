@@ -15,6 +15,7 @@ export interface ConversationRecord {
   patientId: string
   transcript: string
   analysis: ConversationAnalysis
+  imageUrls?: string[]
   timestamp: string
 }
 
@@ -104,18 +105,52 @@ export async function mockNLPAnalysis(transcript: string): Promise<ConversationA
   }
 }
 
-// Save conversation to localStorage (mock database)
+// Save conversation to database via API
 export async function saveConversation(record: Omit<ConversationRecord, "id">): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  try {
+    // APIを通じてデータベースに保存
+    const response = await fetch("/api/conversation/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        patientId: record.patientId,
+        transcript: record.transcript,
+        analysis: record.analysis,
+        imageUrls: record.imageUrls,
+      }),
+    });
 
-  const conversations = getConversationHistory()
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("会話データの保存に失敗しました:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      // エラー時もlocalStorageには保存（フォールバック）
+      await saveToLocalStorage(record);
+    }
+  } catch (error) {
+    console.error("API呼び出しエラー:", error);
+    // エラー時もlocalStorageには保存（フォールバック）
+    await saveToLocalStorage(record);
+  }
+}
+
+// Fallback: Save to localStorage
+async function saveToLocalStorage(record: Omit<ConversationRecord, "id">): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const conversations = getConversationHistory();
   const newRecord: ConversationRecord = {
     ...record,
     id: Date.now().toString(),
-  }
+  };
 
-  conversations.unshift(newRecord) // Add to beginning
-  localStorage.setItem("conversations", JSON.stringify(conversations))
+  conversations.unshift(newRecord); // Add to beginning
+  localStorage.setItem("conversations", JSON.stringify(conversations));
 }
 
 // Get conversation history from localStorage

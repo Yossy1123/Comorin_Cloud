@@ -1,195 +1,260 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity, TrendingUp, Users, Clock, Heart, Brain } from "lucide-react"
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { FileText, X } from "lucide-react"
+import { format } from "date-fns"
+import { Button } from "@/components/ui/button"
+
+interface ConversationRecord {
+  id: string
+  patientId: string
+  recordedAt: string
+  transcript: string
+}
+
+interface GroupedRecords {
+  [patientId: string]: ConversationRecord[]
+}
 
 export function DashboardOverview() {
-  const stats = [
-    {
-      title: "担当当事者数",
-      value: "12",
-      description: "前月比 +2名",
-      icon: Users,
-      trend: "up",
-    },
-    {
-      title: "今週の会話セッション",
-      value: "24",
-      description: "平均 2回/日",
-      icon: Activity,
-      trend: "up",
-    },
-    {
-      title: "平均支援継続期間",
-      value: "8.5ヶ月",
-      description: "目標: 6ヶ月以内",
-      icon: Clock,
-      trend: "down",
-    },
-    {
-      title: "支援効果スコア",
-      value: "78%",
-      description: "前月比 +5%",
-      icon: TrendingUp,
-      trend: "up",
-    },
-  ]
+  const [records, setRecords] = useState<GroupedRecords>({})
+  const [loading, setLoading] = useState(true)
+  const [selectedRecord, setSelectedRecord] = useState<ConversationRecord | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  // Mock data for charts
-  const weeklyActivityData = [
-    { day: "月", sessions: 3, vitals: 12 },
-    { day: "火", sessions: 4, vitals: 12 },
-    { day: "水", sessions: 2, vitals: 12 },
-    { day: "木", sessions: 5, vitals: 12 },
-    { day: "金", sessions: 3, vitals: 12 },
-    { day: "土", sessions: 2, vitals: 12 },
-    { day: "日", sessions: 1, vitals: 12 },
-  ]
+  useEffect(() => {
+    fetchConversationRecords()
+  }, [])
 
-  const supportProgressData = [
-    { month: "8月", score: 45 },
-    { month: "9月", score: 52 },
-    { month: "10月", score: 58 },
-    { month: "11月", score: 65 },
-    { month: "12月", score: 72 },
-    { month: "1月", score: 78 },
-  ]
+  async function fetchConversationRecords() {
+    try {
+      const response = await fetch("/api/conversation/records")
+      
+      if (!response.ok) {
+        throw new Error("面談記録の取得に失敗しました")
+      }
+      
+      const data = await response.json()
+      setRecords(data.records || {})
+    } catch (error) {
+      console.error("面談記録取得エラー:", error)
+      // エラー時は空のレコードを設定
+      setRecords({})
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 日付を YYMMDD 形式にフォーマット
+  function formatRecordDate(dateString: string): string {
+    const date = new Date(dateString)
+    return format(date, "yyMMdd")
+  }
+
+  // 日付を詳細表示用にフォーマット
+  function formatDetailDate(dateString: string): string {
+    const date = new Date(dateString)
+    return format(date, "yyyy年MM月dd日")
+  }
+
+  // 面談記録をクリックした時の処理
+  function handleRecordClick(record: ConversationRecord) {
+    setSelectedRecord(record)
+    setIsDialogOpen(true)
+  }
+
+  // ダミーの詳細メモを生成
+  function generateDummyMemo(record: ConversationRecord): string {
+    const memos = [
+      `【面談記録】
+
+日時: ${formatDetailDate(record.recordedAt)}
+利用者ID: ${record.patientId}
+
+■ 本日の様子
+表情は明るく、コミュニケーションも良好でした。最近は生活リズムが改善されており、午前中から活動できる日が増えているとのこと。
+
+■ 話し合った内容
+・今週の活動状況の振り返り
+・来週の目標設定
+・家族との関係について
+
+■ 利用者の発言（抜粋）
+「最近は少しずつ外に出られるようになってきました。まだ人混みは苦手ですが、朝の散歩を続けています。」
+
+■ 支援者の所見
+小さな成功体験の積み重ねが自信につながっているように見受けられます。引き続き、本人のペースを尊重しながら支援を継続していきます。
+
+■ 次回までの目標
+1. 朝の散歩を週3回以上継続する
+2. 家族と食事を共にする機会を増やす
+3. 興味のある趣味の活動を一つ始める
+
+■ 特記事項
+睡眠の質が改善されており、疲労感が軽減されているとのこと。`,
+
+      `【面談記録】
+
+日時: ${formatDetailDate(record.recordedAt)}
+利用者ID: ${record.patientId}
+
+■ 本日の様子
+やや疲れた様子が見られました。先週に比べて活動量が減少しているとのこと。
+
+■ 話し合った内容
+・最近の体調について
+・ストレス要因の特定
+・リラクゼーション方法の提案
+
+■ 利用者の発言（抜粋）
+「今週は少し疲れやすくて...無理をしないように気をつけています。でも、できることは続けたいと思っています。」
+
+■ 支援者の所見
+無理のないペースを保つことを優先しています。本人も自分の状態を客観的に把握できており、適切な判断ができているようです。
+
+■ 次回までの目標
+1. 十分な休息を取る
+2. 無理のない範囲での活動継続
+3. ストレス管理の実践
+
+■ 特記事項
+次回の面談で、活動量の調整について再度話し合う予定。`,
+
+      `【面談記録】
+
+日時: ${formatDetailDate(record.recordedAt)}
+利用者ID: ${record.patientId}
+
+■ 本日の様子
+非常に前向きな様子でした。新しいことにチャレンジしたいという意欲が見られます。
+
+■ 話し合った内容
+・これまでの進捗の確認
+・新しい目標の設定
+・社会参加に向けた準備
+
+■ 利用者の発言（抜粋）
+「最近は自信がついてきました。もう少し活動の幅を広げてみたいと思っています。アルバイトなども視野に入れて考えています。」
+
+■ 支援者の所見
+着実に回復の兆しが見られます。本人の意欲を大切にしながら、段階的なステップアップを支援していきます。
+
+■ 次回までの目標
+1. 地域の活動に参加してみる
+2. アルバイト情報の収集
+3. 生活リズムの維持
+
+■ 特記事項
+家族との関係も改善されており、良好なサポート体制が整っています。次のステージへの移行を検討する時期かもしれません。`,
+    ];
+
+    // ランダムにメモを選択（実際はrecord.transcriptを使用）
+    return memos[Math.floor(Math.random() * memos.length)];
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">読み込み中...</p>
+      </div>
+    )
+  }
+
+  const patientIds = Object.keys(records).sort()
+
+  if (patientIds.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground">概要</h2>
+          <p className="text-muted-foreground mt-2">面談記録一覧</p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              面談記録がありません
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-3xl font-bold text-foreground">ダッシュボード</h2>
-        <p className="text-muted-foreground mt-2">支援活動の概要と主要指標</p>
+        <h2 className="text-3xl font-bold text-foreground">概要</h2>
+        <p className="text-muted-foreground mt-2">面談記録一覧</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>週間活動状況</CardTitle>
-            <CardDescription>会話セッションとバイタルデータ収集</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={weeklyActivityData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="day" stroke="#888" />
-                <YAxis stroke="#888" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1a1a1a",
-                    border: "1px solid #333",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Bar dataKey="sessions" fill="#3b82f6" name="会話セッション" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="vitals" fill="#10b981" name="バイタル記録" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>支援効果の推移</CardTitle>
-            <CardDescription>過去6ヶ月の総合スコア</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={supportProgressData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="month" stroke="#888" />
-                <YAxis stroke="#888" domain={[0, 100]} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1a1a1a",
-                    border: "1px solid #333",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Line type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>最近の活動</CardTitle>
-            <CardDescription>直近の支援セッション</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* 【匿名化対応】名前の代わりにIDを使用 */}
-              {[
-                { patientId: "25-001", time: "2時間前", status: "会話セッション完了", icon: Activity },
-                { patientId: "25-002", time: "5時間前", status: "バイタルデータ更新", icon: Heart },
-                { patientId: "25-003", time: "1日前", status: "AI分析完了", icon: Brain },
-              ].map((activity, i) => {
-                const Icon = activity.icon
-                return (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">ID: {activity.patientId}</p>
-                      <p className="text-xs text-muted-foreground">{activity.status}</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
-                  </div>
-                )
-              })}
+      <div className="space-y-8">
+        {patientIds.map((patientId) => (
+          <div key={patientId} className="flex gap-8 items-start">
+            {/* 左側：利用者ID */}
+            <div className="w-32 flex-shrink-0">
+              <h3 className="text-2xl font-bold text-foreground">{patientId}</h3>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>注意が必要な当事者</CardTitle>
-            <CardDescription>優先的な対応が推奨されます</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* 【匿名化対応】名前の代わりにIDを使用 */}
-              {[
-                { patientId: "25-004", reason: "ストレスレベル上昇", priority: "high" },
-                { patientId: "25-005", reason: "会話頻度低下", priority: "medium" },
-              ].map((alert, i) => (
-                <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted">
-                  <div
-                    className={`h-3 w-3 rounded-full ${alert.priority === "high" ? "bg-destructive" : "bg-yellow-500"}`}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">ID: {alert.patientId}</p>
-                    <p className="text-xs text-muted-foreground">{alert.reason}</p>
+            {/* 右側：面談記録リスト */}
+            <div className="flex-1">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-3">
+                    {records[patientId].map((record) => (
+                      <div
+                        key={record.id}
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => handleRecordClick(record)}
+                      >
+                        <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        <span className="text-base text-foreground">
+                          {formatRecordDate(record.recordedAt)}_面談記録
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        ))}
       </div>
+
+      {/* 面談記録詳細モーダル */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              {selectedRecord && `${formatRecordDate(selectedRecord.recordedAt)}_面談記録`}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedRecord && `利用者ID: ${selectedRecord.patientId}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-4">
+            {selectedRecord && (
+              <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                {generateDummyMemo(selectedRecord)}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end mt-6">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              閉じる
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

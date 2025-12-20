@@ -3,12 +3,17 @@
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ConversationRecorder } from "./conversation-recorder"
-import { ConversationHistory } from "./conversation-history"
 import { ConversationAnalysis } from "./conversation-analysis"
-import { FileText, Mic, BarChart3 } from "lucide-react"
+import { Mic, BarChart3 } from "lucide-react"
 
 export function ConversationModule() {
   const [activeTab, setActiveTab] = useState("record")
+  const [selectedPatientId, setSelectedPatientId] = useState<string>("")
+
+  // 録音タブで当事者が選択されたときに呼ばれる
+  const handlePatientSelect = (patientId: string) => {
+    setSelectedPatientId(patientId)
+  }
 
   return (
     <div className="space-y-6">
@@ -18,14 +23,10 @@ export function ConversationModule() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="record" className="flex items-center gap-2">
             <Mic className="h-4 w-4" />
             録音・記録
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            履歴
           </TabsTrigger>
           <TabsTrigger value="analysis" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -34,15 +35,11 @@ export function ConversationModule() {
         </TabsList>
 
         <TabsContent value="record" className="mt-6">
-          <ConversationRecorder />
-        </TabsContent>
-
-        <TabsContent value="history" className="mt-6">
-          <ConversationHistory />
+          <ConversationRecorder onPatientSelect={handlePatientSelect} />
         </TabsContent>
 
         <TabsContent value="analysis" className="mt-6">
-          <ConversationAnalysis />
+          <ConversationAnalysis selectedPatientId={selectedPatientId} />
         </TabsContent>
       </Tabs>
     </div>
