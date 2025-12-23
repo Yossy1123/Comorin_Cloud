@@ -43,7 +43,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (!isSignedIn) {
     router.push("/sign-in")
-    return null
+    return (
+      <div className="min-h-screen bg-background dark flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">リダイレクト中...</p>
+        </div>
+      </div>
+    )
   }
 
   // 基本ナビゲーション
