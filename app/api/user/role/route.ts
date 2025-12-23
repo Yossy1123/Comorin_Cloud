@@ -32,9 +32,18 @@ export async function GET() {
       displayName: user.displayName,
     });
   } catch (error) {
-    console.error("❌ [Role API] エラー:", error);
+    // 詳細なエラーログを出力
+    console.error("❌ [Role API] エラー発生:");
+    console.error("❌ [Role API] エラーメッセージ:", error instanceof Error ? error.message : String(error));
+    console.error("❌ [Role API] エラースタック:", error instanceof Error ? error.stack : "スタックなし");
+    console.error("❌ [Role API] エラー詳細:", JSON.stringify(error, null, 2));
+    
     return NextResponse.json(
-      { error: "ユーザーロールの取得に失敗しました" },
+      { 
+        error: "ユーザーロールの取得に失敗しました",
+        details: error instanceof Error ? error.message : String(error),
+        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      },
       { status: 500 }
     );
   }

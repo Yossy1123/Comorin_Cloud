@@ -36,7 +36,9 @@ export function useUserRole(): UserRoleState {
         } else {
           console.error("❌ [useUserRole] レスポンスエラー:", response.status, response.statusText);
           const errorData = await response.json().catch(() => ({}));
-          console.error("❌ [useUserRole] エラー詳細:", errorData);
+          console.error("❌ [useUserRole] エラー詳細:", JSON.stringify(errorData, null, 2));
+          console.error("❌ [useUserRole] エラーメッセージ:", errorData.error);
+          console.error("❌ [useUserRole] エラースタック:", errorData.stack);
           setRole(null);
         }
       } catch (error) {
