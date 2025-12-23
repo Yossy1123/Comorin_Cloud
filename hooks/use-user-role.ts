@@ -26,15 +26,21 @@ export function useUserRole(): UserRoleState {
   useEffect(() => {
     async function fetchUserRole() {
       try {
+        console.log("🔍 [useUserRole] ロール取得開始");
         const response = await fetch("/api/user/role");
+        
         if (response.ok) {
           const data = await response.json();
+          console.log("✅ [useUserRole] ロール取得成功:", data);
           setRole(data.role);
         } else {
+          console.error("❌ [useUserRole] レスポンスエラー:", response.status, response.statusText);
+          const errorData = await response.json().catch(() => ({}));
+          console.error("❌ [useUserRole] エラー詳細:", errorData);
           setRole(null);
         }
       } catch (error) {
-        console.error("ユーザーロール取得エラー:", error);
+        console.error("❌ [useUserRole] ネットワークエラー:", error);
         setRole(null);
       } finally {
         setIsLoading(false);

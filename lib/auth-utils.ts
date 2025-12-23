@@ -18,6 +18,7 @@ export async function getCurrentUser() {
   const { userId } = await auth();
   
   if (!userId) {
+    console.log("❌ [Auth] userIdが取得できません");
     return null;
   }
 
@@ -25,14 +26,18 @@ export async function getCurrentUser() {
   const clerkUser = await currentUser();
   
   if (!clerkUser) {
+    console.log("❌ [Auth] Clerkユーザーが取得できません");
     return null;
   }
 
   const email = clerkUser.emailAddresses[0]?.emailAddress;
 
   if (!email) {
+    console.error("❌ [Auth] メールアドレスが取得できませんでした");
     throw new Error("メールアドレスが取得できませんでした");
   }
+
+  console.log("🔍 [Auth] ユーザー情報:", { userId, email });
 
   // PrismaのUserレコードを取得または作成
   let user = await db.user.findUnique({
@@ -43,6 +48,8 @@ export async function getCurrentUser() {
     // 新規ユーザーの場合は作成
     const role = email === ADMIN_EMAIL ? Role.ADMIN : Role.SUPPORTER;
     
+    console.log("🆕 [Auth] 新規ユーザーを作成:", { email, role });
+    
     user = await db.user.create({
       data: {
         id: userId,
@@ -51,6 +58,22 @@ export async function getCurrentUser() {
         emailVerified: true,
       },
     });
+    
+    console.log("✅ [Auth] ユーザー作成完了:", { id: user.id, role: user.role });
+  } else {
+    console.log("✅ [Auth] 既存ユーザー:", { id: user.id, email: user.email, role: user.role });
+    
+    // 管理者メールアドレスなのにロールがADMINでない場合、自動修正
+    if (email === ADMIN_EMAIL && user.role !== Role.ADMIN) {
+      console.log("⚠️ [Auth] 管理者メールアドレスですがロールがADMINではありません。修正します。");
+      
+      user = await db.user.update({
+        where: { email },
+        data: { role: Role.ADMIN },
+      });
+      
+      console.log("✅ [Auth] ロールをADMINに更新しました:", { id: user.id, role: user.role });
+    }
   }
 
   return user;
