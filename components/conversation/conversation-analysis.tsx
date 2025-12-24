@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { getConversationHistory } from "@/lib/mock-conversation"
 import { maskPersonalNames } from "@/lib/name-masking"
-import { AssessmentViewer } from "@/components/assessment/assessment-viewer"
+import { AssessmentEditor } from "@/components/assessment/assessment-editor"
 import type { AssessmentData, ExtractionResult } from "@/types/assessment"
 import { FileText, Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useToast } from "@/hooks/use-toast"
 
 interface ConversationAnalysisProps {
   selectedPatientId?: string
@@ -22,6 +23,8 @@ export function ConversationAnalysis({ selectedPatientId: propSelectedPatientId 
   const [assessmentData, setAssessmentData] = useState<AssessmentData | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractionError, setExtractionError] = useState<string | null>(null)
+  
+  const { toast } = useToast()
 
   // 親から渡された当事者IDが変更されたら更新
   useEffect(() => {
@@ -249,7 +252,16 @@ export function ConversationAnalysis({ selectedPatientId: propSelectedPatientId 
             </CardContent>
           </Card>
 
-          <AssessmentViewer data={assessmentData} />
+          <AssessmentEditor 
+            data={assessmentData} 
+            onSave={(updatedData) => {
+              setAssessmentData(updatedData)
+              toast({
+                title: "保存完了",
+                description: "アセスメントを更新しました",
+              })
+            }}
+          />
         </>
       )}
     </div>
