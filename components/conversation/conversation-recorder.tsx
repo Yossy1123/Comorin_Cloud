@@ -5,9 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Mic, Square, Upload, Loader2, FileText } from "lucide-react"
+import { Mic, Square, Upload, Loader2, FileText, AlertCircle } from "lucide-react"
 import { mockSpeechToText, mockNLPAnalysis, saveConversation } from "@/lib/mock-conversation"
 import { mockPatients } from "@/lib/mock-patients"
 import { MemoUploader } from "./memo-uploader"
@@ -25,11 +25,40 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
   const [success, setSuccess] = useState(false)
   const [importedFileName, setImportedFileName] = useState("")
   const [imageDataUrls, setImageDataUrls] = useState<string[]>([])
+  const [patientIdError, setPatientIdError] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 当事者選択時にコールバックを呼び出す
-  const handlePatientChange = (patientId: string) => {
+  // 当事者IDのバリデーション（数字、アルファベット、ハイフンのみ、最大8文字）
+  const validatePatientId = (id: string): boolean => {
+    const pattern = /^[a-zA-Z0-9-]{1,8}$/
+    return pattern.test(id)
+  }
+
+  // 当事者ID入力時の処理
+  const handlePatientIdChange = (value: string) => {
+    // 入力値をそのまま設定（表示用）
+    setSelectedPatient(value)
+
+    // バリデーション
+    if (value === "") {
+      setPatientIdError("")
+    } else if (value.length > 8) {
+      setPatientIdError("IDは8文字以内で入力してください")
+    } else if (!/^[a-zA-Z0-9-]*$/.test(value)) {
+      setPatientIdError("使用できる文字: 数字、アルファベット、ハイフン（-）のみ")
+    } else {
+      setPatientIdError("")
+      // 有効なIDの場合、コールバックを呼び出す
+      if (onPatientSelect) {
+        onPatientSelect(value)
+      }
+    }
+  }
+
+  // クイック選択: 既存の当事者IDを選択
+  const handleQuickSelect = (patientId: string) => {
     setSelectedPatient(patientId)
+    setPatientIdError("")
     if (onPatientSelect) {
       onPatientSelect(patientId)
     }
@@ -176,24 +205,50 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
       <Card>
         <CardHeader>
           <CardTitle>録音対象の選択</CardTitle>
-          <CardDescription>会話を記録する当事者を選択してください</CardDescription>
+          <CardDescription>会話を記録する当事者のIDを入力してください（最大8文字）</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>当事者を選択</Label>
-            <Select value={selectedPatient} onValueChange={handlePatientChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="当事者を選択してください" />
-              </SelectTrigger>
-              <SelectContent>
-                {mockPatients.map((patient) => (
-                  <SelectItem key={patient.id} value={patient.id}>
-                    ID: {patient.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="patientId">当事者ID</Label>
+            <Input
+              id="patientId"
+              type="text"
+              placeholder="例: 25-001"
+              value={selectedPatient}
+              onChange={(e) => handlePatientIdChange(e.target.value)}
+              maxLength={8}
+              className={patientIdError ? "border-destructive" : ""}
+            />
+            <p className="text-xs text-muted-foreground">
+              使用可能な文字: 数字、アルファベット、ハイフン（-）
+            </p>
+            {patientIdError && (
+              <Alert variant="destructive" className="py-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">{patientIdError}</AlertDescription>
+              </Alert>
+            )}
           </div>
+
+          {/* 既存IDのクイック選択 */}
+          {mockPatients.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">クイック選択</Label>
+              <div className="flex flex-wrap gap-2">
+                {mockPatients.map((patient) => (
+                  <Button
+                    key={patient.id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickSelect(patient.id)}
+                    className="text-xs"
+                  >
+                    {patient.id}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -220,7 +275,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
             />
             <Button
               onClick={handleImportButtonClick}
-              disabled={!selectedPatient || isProcessing}
+              disabled={!selectedPatient || isProcessing || !!patientIdError}
               className="gap-2"
             >
               <Upload className="h-4 w-4" />
@@ -249,7 +304,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
       </Card>
 
       {/* 面談メモアップロードセクション */}
-      <MemoUploader onTextExtracted={handleMemoTextExtracted} disabled={!selectedPatient || isProcessing} />
+      <MemoUploader onTextExtracted={handleMemoTextExtracted} disabled={!selectedPatient || isProcessing || !!patientIdError} />
       </div>
 
       {/* テキスト編集セクション */}
@@ -272,7 +327,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
 
           <Button
             onClick={handleSaveConversation}
-            disabled={!transcript || !selectedPatient || isProcessing}
+            disabled={!transcript || !selectedPatient || isProcessing || !!patientIdError}
             className="w-full gap-2"
           >
             {isProcessing ? (
