@@ -195,12 +195,12 @@ export function AssessmentExtractor({ onExtracted }: AssessmentExtractorProps) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">抽出精度</span>
-                    <Badge variant={result.data.extractionConfidence >= 70 ? "default" : "secondary"}>
-                      {result.data.extractionConfidence}%
+                    <Badge variant={(result.data.extractionConfidence || 0) >= 70 ? "default" : "secondary"}>
+                      {result.data.extractionConfidence || 0}%
                     </Badge>
                   </div>
-                  <Progress value={result.data.extractionConfidence} />
-                  {result.data.extractionConfidence < 50 && (
+                  <Progress value={result.data.extractionConfidence || 0} />
+                  {(result.data.extractionConfidence || 0) < 50 && (
                     <p className="text-sm text-yellow-500">
                       ※ 抽出精度が低いため、入力テキストをより詳細にすることをお勧めします
                     </p>
