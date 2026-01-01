@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Mic, Square, Upload, Loader2, FileText, AlertCircle } from "lucide-react"
+import { Upload, Loader2, FileText, AlertCircle, Music, X } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 import { mockNLPAnalysis, saveConversation } from "@/lib/mock-conversation"
 import { mockPatients } from "@/lib/mock-patients"
 import { MemoUploader } from "./memo-uploader"
@@ -16,16 +17,25 @@ interface ConversationRecorderProps {
   onPatientSelect?: (patientId: string) => void
 }
 
+interface UploadedAudioFile {
+  id: string
+  file: File
+  status: "pending" | "processing" | "completed" | "error"
+  extractedText?: string
+  errorMessage?: string
+}
+
 export function ConversationRecorder({ onPatientSelect }: ConversationRecorderProps) {
-  const [isRecording, setIsRecording] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false)
+  const [isProcessingSave, setIsProcessingSave] = useState(false)
   const [transcript, setTranscript] = useState("")
   const [selectedPatient, setSelectedPatient] = useState("")
-  const [recordingTime, setRecordingTime] = useState(0)
   const [success, setSuccess] = useState(false)
-  const [importedFileName, setImportedFileName] = useState("")
+  const [uploadedAudioFiles, setUploadedAudioFiles] = useState<UploadedAudioFile[]>([])
   const [imageDataUrls, setImageDataUrls] = useState<string[]>([])
   const [patientIdError, setPatientIdError] = useState("")
+  const [processingProgress, setProcessingProgress] = useState(0)
+  const [isMockMode, setIsMockMode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 当事者IDのバリデーション（数字、アルファベット、ハイフンのみ、最大8文字）
@@ -64,37 +74,12 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
     }
   }
 
-  const handleStartRecording = () => {
-    setIsRecording(true)
-    setRecordingTime(0)
-    setSuccess(false)
-
-    // Mock recording timer
-    const interval = setInterval(() => {
-      setRecordingTime((prev) => prev + 1)
-    }, 1000)
-
-    // Store interval ID for cleanup
-    ;(window as any).recordingInterval = interval
-  }
-
-  const handleStopRecording = async () => {
-    setIsRecording(false)
-    clearInterval((window as any).recordingInterval)
-    setIsProcessing(true)
-
-    // Mock speech-to-text processing
-    const mockTranscript = await mockSpeechToText()
-    setTranscript(mockTranscript)
-    setIsProcessing(false)
-  }
-
   const handleSaveConversation = async () => {
     if (!selectedPatient || !transcript) {
       return
     }
 
-    setIsProcessing(true)
+    setIsProcessingSave(true)
 
     // Mock NLP analysis
     const analysis = await mockNLPAnalysis(transcript)
@@ -109,23 +94,18 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
     })
 
     setSuccess(true)
-    setIsProcessing(false)
+    setIsProcessingSave(false)
 
     // Reset form after 2 seconds
     setTimeout(() => {
       setTranscript("")
       setSelectedPatient("")
-      setRecordingTime(0)
       setSuccess(false)
-      setImportedFileName("")
+      setUploadedAudioFiles([])
       setImageDataUrls([])
+      setIsMockMode(false)
+      setProcessingProgress(0)
     }, 2000)
-  }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   const handleImportButtonClick = () => {
@@ -133,42 +113,93 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
   }
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const files = event.target.files
+    if (!files || files.length === 0) return
 
-    const fileName = file.name.toLowerCase()
-    const isAudioFile = fileName.endsWith(".mp3") || fileName.endsWith(".m4a")
-    const isTextFile = fileName.endsWith(".txt") || fileName.endsWith(".csv")
+    const validAudioTypes = ["audio/mpeg", "audio/mp4", "audio/x-m4a", ".mp3", ".m4a"]
+    const validTextTypes = ["text/plain", "text/csv", ".txt", ".csv"]
+    const maxSize = 25 * 1024 * 1024 // 25MB
+    const newFiles: UploadedAudioFile[] = []
 
-    // ファイル形式チェック
-    if (!isAudioFile && !isTextFile) {
-      alert("音声ファイル（mp3, m4a）またはテキストファイル（txt, csv）のみ対応しています")
-      return
+    // ファイルの検証
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const fileName = file.name.toLowerCase()
+      const isAudioFile = fileName.endsWith(".mp3") || fileName.endsWith(".m4a") || file.type.startsWith("audio/")
+      const isTextFile = fileName.endsWith(".txt") || fileName.endsWith(".csv") || file.type.startsWith("text/")
+
+      // ファイル形式チェック
+      if (!isAudioFile && !isTextFile) {
+        alert(`${file.name}: 音声ファイル（mp3, m4a）またはテキストファイル（txt, csv）のみ対応しています`)
+        continue
+      }
+
+      // ファイルサイズチェック
+      if (file.size > maxSize) {
+        alert(`${file.name}: ファイルサイズは25MB以下にしてください`)
+        continue
+      }
+
+      newFiles.push({
+        id: `${Date.now()}-${i}`,
+        file,
+        status: "pending",
+      })
     }
 
-    setImportedFileName(file.name)
-    setIsProcessing(true)
-    setSuccess(false)
+    if (newFiles.length > 0) {
+      setUploadedAudioFiles((prev) => [...prev, ...newFiles])
+    }
 
-    try {
-      if (isTextFile) {
-        // テキストファイルの場合：直接読み込み
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          const text = e.target?.result as string
-          setTranscript(text)
-          setIsProcessing(false)
-        }
-        reader.onerror = () => {
-          alert("ファイルの読み込みに失敗しました")
-          setIsProcessing(false)
-        }
-        reader.readAsText(file, "UTF-8")
-      } else {
-        // 音声ファイルの場合：音声→テキスト変換
-        try {
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleRemoveAudioFile = (fileId: string) => {
+    setUploadedAudioFiles((prev) => prev.filter((f) => f.id !== fileId))
+  }
+
+  const handleProcessAllAudioFiles = async () => {
+    setIsProcessingAudio(true)
+    setProcessingProgress(0)
+
+    const pendingFiles = uploadedAudioFiles.filter((f) => f.status === "pending")
+    const extractedTexts: string[] = []
+
+    for (let i = 0; i < pendingFiles.length; i++) {
+      const uploadedFile = pendingFiles[i]
+      const fileName = uploadedFile.file.name.toLowerCase()
+      const isTextFile = fileName.endsWith(".txt") || fileName.endsWith(".csv")
+
+      // ステータスを「処理中」に更新
+      setUploadedAudioFiles((prev) =>
+        prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: "processing" as const } : f))
+      )
+
+      try {
+        if (isTextFile) {
+          // テキストファイルの場合：直接読み込み
+          const text = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = (e) => resolve(e.target?.result as string)
+            reader.onerror = () => reject(new Error("ファイルの読み込みに失敗しました"))
+            reader.readAsText(uploadedFile.file, "UTF-8")
+          })
+
+          // ステータスを「完了」に更新
+          setUploadedAudioFiles((prev) =>
+            prev.map((f) =>
+              f.id === uploadedFile.id ? { ...f, status: "completed" as const, extractedText: text } : f
+            )
+          )
+
+          extractedTexts.push(`--- ${uploadedFile.file.name} ---\n${text}`)
+        } else {
+          // 音声ファイルの場合：音声→テキスト変換
           const formData = new FormData()
-          formData.append("file", file)
+          formData.append("file", uploadedFile.file)
 
           const response = await fetch("/api/conversation/transcribe", {
             method: "POST",
@@ -181,29 +212,53 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
           }
 
           const data = await response.json()
-          setTranscript(data.text)
-          
-          // モック使用の場合は警告を表示
-          if (data.isMock) {
-            console.warn("⚠️ モック音声文字起こしを使用しています")
-          }
-          
-          setIsProcessing(false)
-        } catch (error: any) {
-          console.error("音声文字起こしエラー:", error)
-          alert(error.message || "音声ファイルの処理中にエラーが発生しました")
-          setIsProcessing(false)
+          const extractedText = data.text
+
+          // ステータスを「完了」に更新
+          setUploadedAudioFiles((prev) =>
+            prev.map((f) =>
+              f.id === uploadedFile.id
+                ? { ...f, status: "completed" as const, extractedText }
+                : f
+            )
+          )
+
+          extractedTexts.push(`--- ${uploadedFile.file.name} ---\n${extractedText}`)
+          setIsMockMode(data.isMock || false)
         }
+      } catch (err) {
+        console.error("処理エラー:", err)
+        const errorMessage = err instanceof Error ? err.message : "処理中にエラーが発生しました"
+
+        // ステータスを「エラー」に更新
+        setUploadedAudioFiles((prev) =>
+          prev.map((f) =>
+            f.id === uploadedFile.id
+              ? { ...f, status: "error" as const, errorMessage }
+              : f
+          )
+        )
       }
-    } catch (error) {
-      alert("ファイルの処理中にエラーが発生しました")
-      setIsProcessing(false)
+
+      // 進捗を更新
+      setProcessingProgress(((i + 1) / pendingFiles.length) * 100)
     }
 
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+    // すべての抽出されたテキストをテキストエリアに追加
+    if (extractedTexts.length > 0) {
+      setTranscript((prev) => {
+        const separator = prev ? "\n\n--- 音声データより ---\n" : ""
+        return prev + separator + extractedTexts.join("\n\n")
+      })
     }
+
+    setIsProcessingAudio(false)
+  }
+
+  const handleClearAllAudioFiles = () => {
+    setUploadedAudioFiles([])
+    setIsMockMode(false)
+    setProcessingProgress(0)
   }
 
   const handleMemoTextExtracted = (text: string, urls?: string[]) => {
@@ -272,58 +327,162 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* 音声データアップロードセクション */}
         <Card>
           <CardHeader>
-            <CardTitle>音声データのアップロード</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Music className="h-5 w-5" />
+              音声データのアップロード
+            </CardTitle>
             <CardDescription>支援における録音データやその他の音声データをアップロードしてテキスト化します</CardDescription>
           </CardHeader>
-        <CardContent className="space-y-4">
-          {/* データインポート */}
-          <div className="flex flex-col items-center justify-center py-8 space-y-4 border-2 border-dashed rounded-lg">
-            <FileText className="h-12 w-12 text-muted-foreground" />
-            <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">音声データをアップロード</p>
-              <p className="text-xs text-muted-foreground">MP3、M4A、TXT、CSV</p>
-            </div>
+          <CardContent className="space-y-4">
             <input
               ref={fileInputRef}
               type="file"
               accept=".mp3,.m4a,.txt,.csv,audio/mpeg,audio/mp4,audio/x-m4a,text/plain,text/csv"
               onChange={handleFileImport}
               className="hidden"
+              multiple
             />
-            <Button
-              onClick={handleImportButtonClick}
-              disabled={!selectedPatient || isProcessing || !!patientIdError}
-              className="gap-2"
-            >
-              <Upload className="h-4 w-4" />
-              ファイルを選択
-            </Button>
-            {importedFileName && (
-              <div className="text-xs text-center text-muted-foreground font-medium">
-                インポート済み: {importedFileName}
+
+            {/* ファイルリスト */}
+            {uploadedAudioFiles.length > 0 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  {uploadedAudioFiles.map((uploadedFile) => (
+                    <div
+                      key={uploadedFile.id}
+                      className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {uploadedFile.status === "processing" ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                        ) : uploadedFile.status === "completed" ? (
+                          <div className="h-4 w-4 shrink-0 rounded-full bg-green-500 flex items-center justify-center">
+                            <span className="text-white text-xs">✓</span>
+                          </div>
+                        ) : uploadedFile.status === "error" ? (
+                          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                        ) : (
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{uploadedFile.file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(uploadedFile.file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                          {uploadedFile.errorMessage && (
+                            <p className="text-xs text-destructive mt-1">{uploadedFile.errorMessage}</p>
+                          )}
+                        </div>
+                      </div>
+                      {uploadedFile.status !== "processing" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() => handleRemoveAudioFile(uploadedFile.id)}
+                          disabled={isProcessingAudio || isProcessingSave}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* アクションボタン */}
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleImportButtonClick}
+                    disabled={!selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError}
+                    variant="outline"
+                    className="gap-2 flex-1"
+                  >
+                    <Upload className="h-4 w-4" />
+                    さらに追加
+                  </Button>
+                  {uploadedAudioFiles.some((f) => f.status === "pending") && (
+                    <Button
+                      onClick={handleProcessAllAudioFiles}
+                      disabled={!selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError}
+                      className="gap-2 flex-1"
+                    >
+                      {isProcessingAudio ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          処理中...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-4 w-4" />
+                          すべてを処理
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {uploadedAudioFiles.some((f) => f.status === "completed") && !isProcessingAudio && (
+                    <Button onClick={handleClearAllAudioFiles} variant="outline" className="gap-2">
+                      <X className="h-4 w-4" />
+                      クリア
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
-          </div>
 
-          {isProcessing && (
-            <Alert>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <AlertDescription>データを処理しています...</AlertDescription>
-            </Alert>
-          )}
+            {/* ファイル選択エリア */}
+            {uploadedAudioFiles.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 space-y-4 border-2 border-dashed rounded-lg">
+                <Music className="h-12 w-12 text-muted-foreground" />
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">音声データをアップロード</p>
+                  <p className="text-xs text-muted-foreground">MP3、M4A、TXT、CSV（最大25MB）</p>
+                  <p className="text-xs text-muted-foreground font-semibold">複数選択可能</p>
+                </div>
+                <Button
+                  onClick={handleImportButtonClick}
+                  disabled={!selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError}
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  ファイルを選択
+                </Button>
+              </div>
+            )}
 
-          {success && (
-            <Alert className="border-primary bg-primary/10">
-              <AlertDescription className="text-primary">会話データを保存しました</AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+            {/* 処理進捗バー */}
+            {isProcessingAudio && processingProgress > 0 && (
+              <div className="space-y-2">
+                <Progress value={processingProgress} className="w-full" />
+                <p className="text-xs text-center text-muted-foreground">
+                  処理中... {Math.round(processingProgress)}%
+                </p>
+              </div>
+            )}
 
-      {/* 面談メモアップロードセクション */}
-      <MemoUploader onTextExtracted={handleMemoTextExtracted} disabled={!selectedPatient || isProcessing || !!patientIdError} />
+            {/* 処理中メッセージ */}
+            {isProcessingAudio && (
+              <Alert>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertDescription>音声からテキストを抽出しています...</AlertDescription>
+              </Alert>
+            )}
+
+            {/* モックモード通知 */}
+            {isMockMode && !isProcessingAudio && (
+              <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+                <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                  🔧 開発モード: サンプルテキストを表示しています。実際の音声文字起こし機能を使用するには、OpenAI APIのクォータを確認してください。
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 面談メモアップロードセクション */}
+        <MemoUploader onTextExtracted={handleMemoTextExtracted} disabled={!selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError} />
       </div>
 
       {/* テキスト編集セクション */}
@@ -336,20 +495,20 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
           <div className="space-y-2">
             <Label>会話内容</Label>
             <Textarea
-              placeholder="録音を停止すると、自動的にテキスト化されます..."
+              placeholder="ファイルをアップロードして「すべてを処理」をクリックすると、自動的にテキスト化されます..."
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
               className="min-h-[300px] font-mono text-sm"
-              disabled={isProcessing}
+              disabled={isProcessingAudio || isProcessingSave}
             />
           </div>
 
           <Button
             onClick={handleSaveConversation}
-            disabled={!transcript || !selectedPatient || isProcessing || !!patientIdError}
+            disabled={!transcript || !selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError}
             className="w-full gap-2"
           >
-            {isProcessing ? (
+            {isProcessingSave ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 処理中...
@@ -361,6 +520,13 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
               </>
             )}
           </Button>
+
+          {/* 保存成功メッセージ */}
+          {success && (
+            <Alert className="border-primary bg-primary/10">
+              <AlertDescription className="text-primary">会話データを保存しました</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
     </div>
