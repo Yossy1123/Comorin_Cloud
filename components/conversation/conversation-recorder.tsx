@@ -26,7 +26,8 @@ interface UploadedAudioFile {
 }
 
 export function ConversationRecorder({ onPatientSelect }: ConversationRecorderProps) {
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false)
+  const [isProcessingSave, setIsProcessingSave] = useState(false)
   const [transcript, setTranscript] = useState("")
   const [selectedPatient, setSelectedPatient] = useState("")
   const [success, setSuccess] = useState(false)
@@ -78,7 +79,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
       return
     }
 
-    setIsProcessing(true)
+    setIsProcessingSave(true)
 
     // Mock NLP analysis
     const analysis = await mockNLPAnalysis(transcript)
@@ -93,7 +94,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
     })
 
     setSuccess(true)
-    setIsProcessing(false)
+    setIsProcessingSave(false)
 
     // Reset form after 2 seconds
     setTimeout(() => {
@@ -161,7 +162,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
   }
 
   const handleProcessAllAudioFiles = async () => {
-    setIsProcessing(true)
+    setIsProcessingAudio(true)
     setProcessingProgress(0)
 
     const pendingFiles = uploadedAudioFiles.filter((f) => f.status === "pending")
@@ -251,7 +252,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
       })
     }
 
-    setIsProcessing(false)
+    setIsProcessingAudio(false)
   }
 
   const handleClearAllAudioFiles = () => {
@@ -382,7 +383,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
                           size="icon"
                           className="h-8 w-8 shrink-0"
                           onClick={() => handleRemoveAudioFile(uploadedFile.id)}
-                          disabled={isProcessing}
+                          disabled={isProcessingAudio || isProcessingSave}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -395,7 +396,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
                 <div className="flex gap-2">
                   <Button
                     onClick={handleImportButtonClick}
-                    disabled={!selectedPatient || isProcessing || !!patientIdError}
+                    disabled={!selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError}
                     variant="outline"
                     className="gap-2 flex-1"
                   >
@@ -405,10 +406,10 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
                   {uploadedAudioFiles.some((f) => f.status === "pending") && (
                     <Button
                       onClick={handleProcessAllAudioFiles}
-                      disabled={!selectedPatient || isProcessing || !!patientIdError}
+                      disabled={!selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError}
                       className="gap-2 flex-1"
                     >
-                      {isProcessing ? (
+                      {isProcessingAudio ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
                           処理中...
@@ -421,7 +422,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
                       )}
                     </Button>
                   )}
-                  {uploadedAudioFiles.some((f) => f.status === "completed") && !isProcessing && (
+                  {uploadedAudioFiles.some((f) => f.status === "completed") && !isProcessingAudio && (
                     <Button onClick={handleClearAllAudioFiles} variant="outline" className="gap-2">
                       <X className="h-4 w-4" />
                       クリア
@@ -442,7 +443,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
                 </div>
                 <Button
                   onClick={handleImportButtonClick}
-                  disabled={!selectedPatient || isProcessing || !!patientIdError}
+                  disabled={!selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError}
                   className="gap-2"
                 >
                   <Upload className="h-4 w-4" />
@@ -452,7 +453,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
             )}
 
             {/* 処理進捗バー */}
-            {isProcessing && processingProgress > 0 && (
+            {isProcessingAudio && processingProgress > 0 && (
               <div className="space-y-2">
                 <Progress value={processingProgress} className="w-full" />
                 <p className="text-xs text-center text-muted-foreground">
@@ -462,7 +463,7 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
             )}
 
             {/* 処理中メッセージ */}
-            {isProcessing && (
+            {isProcessingAudio && (
               <Alert>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <AlertDescription>音声からテキストを抽出しています...</AlertDescription>
@@ -470,24 +471,18 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
             )}
 
             {/* モックモード通知 */}
-            {isMockMode && !isProcessing && (
+            {isMockMode && !isProcessingAudio && (
               <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
                 <AlertDescription className="text-yellow-800 dark:text-yellow-200">
                   🔧 開発モード: サンプルテキストを表示しています。実際の音声文字起こし機能を使用するには、OpenAI APIのクォータを確認してください。
                 </AlertDescription>
               </Alert>
             )}
-
-            {success && (
-              <Alert className="border-primary bg-primary/10">
-                <AlertDescription className="text-primary">会話データを保存しました</AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
 
         {/* 面談メモアップロードセクション */}
-        <MemoUploader onTextExtracted={handleMemoTextExtracted} disabled={!selectedPatient || isProcessing || !!patientIdError} />
+        <MemoUploader onTextExtracted={handleMemoTextExtracted} disabled={!selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError} />
       </div>
 
       {/* テキスト編集セクション */}
@@ -504,16 +499,16 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
               className="min-h-[300px] font-mono text-sm"
-              disabled={isProcessing}
+              disabled={isProcessingAudio || isProcessingSave}
             />
           </div>
 
           <Button
             onClick={handleSaveConversation}
-            disabled={!transcript || !selectedPatient || isProcessing || !!patientIdError}
+            disabled={!transcript || !selectedPatient || isProcessingAudio || isProcessingSave || !!patientIdError}
             className="w-full gap-2"
           >
-            {isProcessing ? (
+            {isProcessingSave ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 処理中...
@@ -525,6 +520,13 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
               </>
             )}
           </Button>
+
+          {/* 保存成功メッセージ */}
+          {success && (
+            <Alert className="border-primary bg-primary/10">
+              <AlertDescription className="text-primary">会話データを保存しました</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
     </div>

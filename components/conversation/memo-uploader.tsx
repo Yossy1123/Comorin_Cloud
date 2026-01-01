@@ -313,7 +313,7 @@ export function MemoUploader({ onTextExtracted, disabled = false }: MemoUploader
         {isProcessing && (
           <Alert>
             <Loader2 className="h-4 w-4 animate-spin" />
-            <AlertDescription>画像からテキストを抽出しています...</AlertDescription>
+            <AlertDescription>メモからテキストを抽出しています...</AlertDescription>
           </Alert>
         )}
 
