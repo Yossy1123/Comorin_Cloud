@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Mic, Square, Upload, Loader2, FileText, AlertCircle } from "lucide-react"
-import { mockSpeechToText, mockNLPAnalysis, saveConversation } from "@/lib/mock-conversation"
+import { mockNLPAnalysis, saveConversation } from "@/lib/mock-conversation"
 import { mockPatients } from "@/lib/mock-patients"
 import { MemoUploader } from "./memo-uploader"
 
@@ -166,15 +166,34 @@ export function ConversationRecorder({ onPatientSelect }: ConversationRecorderPr
         reader.readAsText(file, "UTF-8")
       } else {
         // 音声ファイルの場合：音声→テキスト変換
-        // ファイル読み込みのシミュレーション（実際にはFileReaderで読み込む）
-        // 本番環境では、ここでFileReaderを使ってArrayBufferを読み込み、
-        // APIに送信して音声認識を行う
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+        try {
+          const formData = new FormData()
+          formData.append("file", file)
 
-        // Mock speech-to-text processing
-        const mockTranscript = await mockSpeechToText()
-        setTranscript(mockTranscript)
-        setIsProcessing(false)
+          const response = await fetch("/api/conversation/transcribe", {
+            method: "POST",
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.error || "音声文字起こしに失敗しました")
+          }
+
+          const data = await response.json()
+          setTranscript(data.text)
+          
+          // モック使用の場合は警告を表示
+          if (data.isMock) {
+            console.warn("⚠️ モック音声文字起こしを使用しています")
+          }
+          
+          setIsProcessing(false)
+        } catch (error: any) {
+          console.error("音声文字起こしエラー:", error)
+          alert(error.message || "音声ファイルの処理中にエラーが発生しました")
+          setIsProcessing(false)
+        }
       }
     } catch (error) {
       alert("ファイルの処理中にエラーが発生しました")
