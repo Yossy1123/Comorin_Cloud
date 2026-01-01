@@ -9,10 +9,19 @@ import { Mic, BarChart3 } from "lucide-react"
 export function ConversationModule() {
   const [activeTab, setActiveTab] = useState("record")
   const [selectedPatientId, setSelectedPatientId] = useState<string>("")
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // 録音タブで当事者が選択されたときに呼ばれる
   const handlePatientSelect = (patientId: string) => {
     setSelectedPatientId(patientId)
+  }
+
+  // 分析タブに切り替えたときにデータを更新
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    if (value === "analysis") {
+      setRefreshKey(prev => prev + 1)
+    }
   }
 
   return (
@@ -22,7 +31,7 @@ export function ConversationModule() {
         <p className="text-muted-foreground mt-2">支援者と当事者の会話を記録・分析します</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="record" className="flex items-center gap-2">
             <Mic className="h-4 w-4" />
@@ -39,7 +48,7 @@ export function ConversationModule() {
         </TabsContent>
 
         <TabsContent value="analysis" className="mt-6">
-          <ConversationAnalysis selectedPatientId={selectedPatientId} />
+          <ConversationAnalysis key={refreshKey} selectedPatientId={selectedPatientId} />
         </TabsContent>
       </Tabs>
     </div>

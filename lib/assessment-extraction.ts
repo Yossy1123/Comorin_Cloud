@@ -35,57 +35,80 @@ export async function extractAssessmentFromText(text: string): Promise<Extractio
         {
           role: "system",
           content: `あなたはひきこもり支援のアセスメント情報抽出の専門家です。
-提供されたテキストから、3つのタブに分類された情報を抽出してください。
+提供されたテキストから情報を抽出し、以下のJSON形式で返してください。
 
-【重要】個人情報保護のため、以下の情報は抽出しないでください：
-- 氏名（本人・家族）
-- 生年月日（年齢は年代で記録: 10代、20代など）
-- 住所
-- 電話番号、携帯番号
-- その他、個人を特定できる情報
+【重要】個人情報保護のため、氏名・生年月日・住所・電話番号は抽出しないでください。
 
-■ タブ1: 背景・経過
-1. 基本情報
-   - 年齢（年代）、家族構成、経済状況（生活保護・困窮・平均的・裕福）
-   - 相談内容
+【必須】以下のJSON構造で返してください：
 
-2. ひきこもり歴・経緯
-   - ひきこもり歴（期間）
-   - きっかけ・経緯（不登校、受験、就職活動、職場関係、解雇、対人関係、心身の不調等）
-   - 相談経験（有無、相談先、時期、相談経緯）
-   - 受診・治療経験（有無、診断名、初診日、受診期間、精神科以外の受診歴）
+{
+  "basicInfo": {
+    "age": "年齢（例: 20代後半）",
+    "familyStructure": "家族構成（例: 両親と本人の3人家族、一人っ子）",
+    "economicStatus": "経済状況",
+    "consultationContent": "相談内容"
+  },
+  "hikikomoriHistory": {
+    "duration": "ひきこもり歴（例: 23歳頃から、約5年）",
+    "trigger": "きっかけ・経緯（詳細に記述）",
+    "triggerCategories": ["不登校", "対人関係", "心身の不調"],
+    "hasConsultationHistory": true/false,
+    "consultationDestination": "相談先（例: 市の窓口）",
+    "consultationDate": "相談時期",
+    "consultationDetails": "相談経緯",
+    "hasMedicalHistory": true/false,
+    "diagnosis": "診断名（例: 抑うつ、不安障害）",
+    "firstVisitDate": "初診日（例: 20歳頃）",
+    "treatmentPeriod": "受診期間",
+    "otherMedicalHistory": "その他医療歴・薬歴（詳細に記述、例: 抗うつ薬服用、薬が合わなかった等）"
+  },
+  "developmentalHistory": {
+    "childhoodEpisode": "幼少期エピソード",
+    "elementarySchoolEpisode": "小学校エピソード",
+    "juniorHighSchoolEpisode": "中学校エピソード",
+    "highSchoolEpisode": "高校エピソード（例: 2年から不登校、人間関係で中退）",
+    "collegeEpisode": "大学・専門学校エピソード",
+    "episodeCategories": ["不登校", "対人関係", "いじめ"],
+    "finalEducation": "最終学歴（例: 高校中退）",
+    "educationStatus": "在学状況"
+  },
+  "employmentHistory": {
+    "employmentRecords": [{"age": "23歳", "period": "3ヶ月", "content": "飲食店"}],
+    "otherEmployment": ["倉庫業アルバイト"],
+    "licenses": "免許・資格"
+  },
+  "currentLifeStatus": {
+    "wakeUpTime": "起床時刻",
+    "bedTime": "就寝時刻",
+    "hasDayNightReversal": true/false,
+    "mealFrequency": "食事回数",
+    "mealsWithFamily": "家族と一緒/別/部屋食",
+    "bathingFrequency": "入浴頻度（例: 週2〜3回）",
+    "hobbies": ["ゲーム", "動画視聴"],
+    "availableMoney": "本人の使える金銭",
+    "goingOutStatus": "外出状況（例: 月1〜2回、コンビニくらい）",
+    "socialInteraction": ["家族", "友人なし"],
+    "grooming": "身だしなみ",
+    "groomingDetails": "詳細",
+    "lifeSkills": ["調理", "掃除"],
+    "problemBehaviors": ["暴言たまに", "オンラインゲーム課金"],
+    "currentSpecialNotes": "特記事項"
+  },
+  "supportNeeds": {
+    "subjectHope": "本人の希望（詳細に記述）",
+    "familyHope": "家族の希望（詳細に記述）",
+    "familyRelationshipNotes": "家族関係（例: 母が対応多い、父は忙しい）",
+    "necessarySupport": "今後必要な支援"
+  }
+}
 
-3. 育ちのエピソード
-   - 幼少期、小学校、中学校、高校、大学・専門学校の各エピソード
-   - 学業、こだわり、対人関係、不登校、いじめ等
-   - 最終学歴（中・高・専・短・大・大学院、在学状況）
+【重要な抽出ポイント】
+1. 受診歴・治療歴は必ず抽出してください（診断名、薬歴、服薬状況、副作用等）
+2. 「20歳頃」「23歳頃から」などの時期情報を正確に抽出
+3. 本人・家族の発言は直接引用して記録
+4. 情報がない項目は空文字""、空配列[]、またはfalseを返す
 
-4. 就労経験
-   - 就労歴（年齢、期間、就労内容）
-   - その他の就労（アルバイト、パート、派遣等）
-   - 免許・資格
-
-■ タブ2: 生活状況
-- 睡眠（起床時刻、就寝時刻、昼夜逆転の有無）
-- 食事（回数/日、家族と一緒か別か部屋食か）
-- 入浴（毎日、2〜3日ごと、週1回、月2〜3回、入浴しない）
-- 趣味（テレビ、インターネット、携帯、ゲーム、音楽、読書等）
-- 本人の使える金銭
-- 外出（自室から出ない、家から出ない、近所のコンビニ等、趣味の用事のみ）
-- 交流（家族、親戚、友人、メール、パソコン、無等）
-- 身だしなみ（普通、関心がない、こだわりがある）
-- 生活技能（調理、食器洗い、洗濯、掃除）
-- 問題行動（家庭内暴力、支配的言動、物の破損、暴言、強迫行為、自傷行為、浪費、過食、拒食、不潔行為等）
-- 特記事項（現在）
-
-■ タブ3: 支援ニーズ
-- 本人の希望
-- 家族の希望
-- 家族関係・特記事項
-- 今後必要と思われる支援
-
-抽出できない情報は空文字、空配列、またはnullで返してください。
-必ずJSON形式で返してください。`,
+抽出できない情報は空にしてください。必ずJSON形式で返してください。`,
         },
         {
           role: "user",

@@ -31,7 +31,7 @@ export function AnalysisEngine() {
 
       setIsCheckingAssessment(true)
       try {
-        const response = await fetch(`/api/assessment/${selectedPatient}`)
+        const response = await fetch(`/api/assessment/patient/${selectedPatient}`)
         if (response.ok) {
           const data = await response.json()
           setHasAssessment(data.hasAssessment)

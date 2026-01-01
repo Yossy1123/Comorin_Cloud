@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { getConversationHistory } from "@/lib/mock-conversation"
 import { maskPersonalNames } from "@/lib/name-masking"
 import { AssessmentEditor } from "@/components/assessment/assessment-editor"
 import type { AssessmentData, ExtractionResult } from "@/types/assessment"
@@ -41,29 +40,104 @@ export function ConversationAnalysis({ selectedPatientId: propSelectedPatientId 
     setExtractionError(null)
   }, [selectedPatientId])
 
+  // 会話データの状態
+  const [conversations, setConversations] = useState<Array<{
+    id: string;
+    patientId: string;
+    recordedAt: Date | string;
+    transcript: string;
+    analysis?: {
+      emotion: string;
+      stressLevel: string;
+      keywords: string[];
+      recommendation: string;
+    };
+  }>>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+
+  // データベースから会話データを取得
+  const fetchConversations = async () => {
+    setIsLoadingConversations(true);
+    try {
+      const response = await fetch("/api/conversation/records");
+      if (!response.ok) {
+        console.error("会話データの取得に失敗しました");
+        return;
+      }
+      const data = await response.json();
+      
+      // すべての会話をフラットな配列に変換
+      const allConversations: Array<{
+        id: string;
+        patientId: string;
+        recordedAt: Date | string;
+        transcript: string;
+        analysis?: {
+          emotion: string;
+          stressLevel: string;
+          keywords: string[];
+          recommendation: string;
+        };
+      }> = [];
+      
+      Object.values(data.records || {}).forEach((patientRecords: any) => {
+        allConversations.push(...patientRecords);
+      });
+      
+      setConversations(allConversations);
+    } catch (error) {
+      console.error("会話データ取得エラー:", error);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  };
+
+  // コンポーネントマウント時とselectedPatientIdが変更されたときにデータを取得
+  useEffect(() => {
+    fetchConversations();
+  }, [selectedPatientId]);
+
   // 選択された当事者の会話数を取得
   const filteredConversations = useMemo(() => {
     if (!selectedPatientId) return []
-    const allConversations = getConversationHistory()
-    return allConversations.filter((conv) => conv.patientId === selectedPatientId)
-  }, [selectedPatientId])
+    return conversations.filter((conv) => conv.patientId === selectedPatientId)
+  }, [selectedPatientId, conversations])
 
 
   // 会話履歴からアセスメント用のテキストを生成
   const generateAssessmentText = () => {
-    const conversations = filteredConversations
-    if (conversations.length === 0) return ""
+    const allConversations = filteredConversations
+    if (allConversations.length === 0) return ""
+
+    // 最新のデータを優先的に使用するため、日付の新しい順にソート
+    const sortedConversations = [...allConversations].sort((a, b) => {
+      const dateA = new Date(a.recordedAt).getTime()
+      const dateB = new Date(b.recordedAt).getTime()
+      return dateB - dateA // 新しい順
+    })
+
+    // 最新の5件を使用（全件使用すると古いデータが含まれてしまう）
+    const MAX_RECENT_CONVERSATIONS = 5
+    const conversationsList = sortedConversations.slice(0, MAX_RECENT_CONVERSATIONS)
 
     // 【匿名化対応】IDのみを使用
     let text = `対象者ID: ${selectedPatientId}\n\n`
-    text += `会話記録（${conversations.length}件のセッション）:\n\n`
+    text += `会話記録（最新${conversationsList.length}件のセッション / 全${allConversations.length}件）:\n\n`
 
-    conversations.forEach((conv, index) => {
-      const date = new Date(conv.timestamp).toLocaleDateString("ja-JP")
-      text += `【セッション${index + 1}】 ${date}\n`
-      text += `感情状態: ${conv.analysis.emotion}\n`
-      text += `ストレスレベル: ${conv.analysis.stressLevel}\n`
-      text += `キーワード: ${conv.analysis.keywords.join(", ")}\n\n`
+    conversationsList.forEach((conv, index) => {
+      const date = new Date(conv.recordedAt).toLocaleDateString("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+      text += `【最新から${index + 1}件目】 ${date}\n`
+      if (conv.analysis) {
+        text += `感情状態: ${conv.analysis.emotion}\n`
+        text += `ストレスレベル: ${conv.analysis.stressLevel}\n`
+        text += `キーワード: ${conv.analysis.keywords.join(", ")}\n\n`
+      }
       // 【匿名化対応】会話内容から個人名をマスキング
       text += `会話内容:\n${maskPersonalNames(conv.transcript)}\n\n`
       text += `---\n\n`
@@ -131,6 +205,24 @@ export function ConversationAnalysis({ selectedPatientId: propSelectedPatientId 
     )
   }
 
+  // ローディング中の表示
+  if (isLoadingConversations) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-12 pb-12">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <div className="text-center space-y-2">
+                <p className="font-semibold">会話データを読み込み中...</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   // 会話データがない場合の表示
   if (filteredConversations.length === 0) {
     return (
@@ -188,7 +280,12 @@ export function ConversationAnalysis({ selectedPatientId: propSelectedPatientId 
             <Alert>
               <FileText className="h-4 w-4" />
               <AlertDescription>
-                会話データ（{filteredConversations.length}件）を使用してアセスメントシートを生成します。
+                最新の会話データ（最大5件）を優先的に使用してアセスメントシートを生成します。
+                {filteredConversations.length > 5 && (
+                  <span className="block mt-1 text-xs">
+                    ※ 全{filteredConversations.length}件のうち、最新5件を使用します
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
 
