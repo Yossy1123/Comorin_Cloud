@@ -11,6 +11,7 @@ import {
   Clock,
   Users,
   GraduationCap,
+  Briefcase,
   Home,
   AlertTriangle,
   Heart,
@@ -67,8 +68,9 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
           <TabsTrigger value="support">支援ニーズ</TabsTrigger>
         </TabsList>
 
-        {/* 背景・経過（基本情報 + 相談・経過情報 + ひきこもりの経過 + 生育歴 + 学歴・就労歴） */}
+        {/* タブ1: 背景・経過 */}
         <TabsContent value="background" className="space-y-4 mt-6">
+          {/* 基本情報 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -81,108 +83,40 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <InfoItem label="記入日" value={data.basicInfo.recordDate} />
-                <InfoItem label="受付日" value={data.basicInfo.receptionDate} />
-                <InfoItem label="相談経路" value={data.basicInfo.consultationRoute} />
-                <InfoItem label="担当者名" value={data.basicInfo.staffName} />
+                <InfoItem label="年齢" value={data.basicInfo.age} />
+                <InfoItem label="経済状況" value={data.basicInfo.economicStatus} />
+                <InfoItem label="家族構成" value={data.basicInfo.familyStructure} fullWidth />
               </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold mb-3">対象者情報</h4>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <InfoItem label="性別" value={data.basicInfo.gender} />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold mb-3">相談者情報</h4>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <InfoItem label="続柄" value={data.basicInfo.relationship} />
-                  <InfoItem label="同居/非同居" value={data.basicInfo.livingTogether} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                相談・経過情報
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <InfoItem label="相談経路" value={data.consultationHistory.consultationRoute} />
-                <InfoItem label="初回相談日" value={data.consultationHistory.firstConsultationDate} />
-                <InfoItem
-                  label="初回相談機関"
-                  value={data.consultationHistory.firstConsultationOrganization}
-                />
-                <InfoItem
-                  label="相談歴"
-                  value={data.consultationHistory.hasConsultationHistory ? "有" : "無"}
-                  badge={data.consultationHistory.hasConsultationHistory}
-                />
-              </div>
-              {data.consultationHistory.consultationHistoryDetails && (
-                <InfoItem
-                  label="相談歴詳細"
-                  value={data.consultationHistory.consultationHistoryDetails}
-                  fullWidth
-                />
-              )}
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold mb-3">受診歴</h4>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <InfoItem
-                    label="受診歴"
-                    value={data.consultationHistory.hasMedicalHistory ? "有" : "無"}
-                    badge={data.consultationHistory.hasMedicalHistory}
-                  />
-                  {data.consultationHistory.hasMedicalHistory && (
-                    <>
-                      <InfoItem label="診断名" value={data.consultationHistory.diagnosis} important />
-                      <InfoItem label="医療機関名" value={data.consultationHistory.medicalInstitution} />
-                      <InfoItem label="期間" value={data.consultationHistory.medicalPeriod} />
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {data.consultationHistory.socialResourcesUsed && (
+              {data.basicInfo.consultationContent && (
                 <>
                   <Separator />
-                  <InfoItem
-                    label="社会資源利用歴"
-                    value={data.consultationHistory.socialResourcesUsed}
-                    fullWidth
-                  />
+                  <InfoItem label="相談内容" value={data.basicInfo.consultationContent} fullWidth />
                 </>
               )}
             </CardContent>
           </Card>
 
+          {/* ひきこもり歴・経緯 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                ひきこもりの経過
+                ひきこもり歴・経緯
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <InfoItem label="開始時期" value={data.hikikomoriHistory.startDate} important />
-                <InfoItem label="状態" value={data.hikikomoriHistory.statusType} />
-                <InfoItem label="継続期間" value={data.hikikomoriHistory.currentDuration} />
-                <InfoItem label="頻度" value={data.hikikomoriHistory.frequency} />
+                <InfoItem label="ひきこもり歴" value={data.hikikomoriHistory.duration} important />
+                {data.hikikomoriHistory.triggerCategories && data.hikikomoriHistory.triggerCategories.length > 0 && (
+                  <div className="col-span-full">
+                    <div className="text-sm font-medium text-muted-foreground mb-2">きっかけ（カテゴリ）</div>
+                    <div className="flex flex-wrap gap-2">
+                      {data.hikikomoriHistory.triggerCategories.map((cat, idx) => (
+                        <Badge key={idx} variant="secondary">{cat}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {data.hikikomoriHistory.trigger && (
@@ -194,81 +128,27 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
                 />
               )}
 
-              {data.hikikomoriHistory.goingOutStatus && (
-                <InfoItem label="外出状況" value={data.hikikomoriHistory.goingOutStatus} fullWidth />
-              )}
+              <Separator />
 
-              {data.hikikomoriHistory.lifeChanges && (
-                <InfoItem label="生活の変化" value={data.hikikomoriHistory.lifeChanges} fullWidth />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                生育歴・家族構成
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <InfoItem label="出生状況" value={data.developmentalHistory.birthCircumstances} fullWidth />
-              <InfoItem
-                label="幼少期の特徴"
-                value={data.developmentalHistory.childhoodCharacteristics}
-                fullWidth
-              />
-              <InfoItem label="家族構成" value={data.developmentalHistory.familyStructure} fullWidth />
-              <InfoItem
-                label="家族関係"
-                value={data.developmentalHistory.familyRelationships}
-                fullWidth
-              />
-              <InfoItem
-                label="対人関係"
-                value={data.developmentalHistory.interpersonalRelationships}
-                fullWidth
-              />
-              <InfoItem
-                label="養育者との関係"
-                value={data.developmentalHistory.caregiverRelationship}
-                fullWidth
-              />
-              {data.developmentalHistory.specialNotes && (
-                <InfoItem label="特記事項" value={data.developmentalHistory.specialNotes} fullWidth />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" />
-                学歴・就労歴
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-3">学歴</h4>
+                <h4 className="font-semibold mb-3">相談経験</h4>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <InfoItem label="学歴" value={data.educationEmploymentHistory.education} fullWidth />
                   <InfoItem
-                    label="不登校歴"
-                    value={data.educationEmploymentHistory.hasTruancy ? "有" : "無"}
-                    badge={data.educationEmploymentHistory.hasTruancy}
+                    label="相談歴"
+                    value={data.hikikomoriHistory.hasConsultationHistory ? "有" : "無"}
+                    badge={data.hikikomoriHistory.hasConsultationHistory}
                   />
+                  {data.hikikomoriHistory.hasConsultationHistory && (
+                    <>
+                      <InfoItem label="相談先" value={data.hikikomoriHistory.consultationDestination} />
+                      <InfoItem label="相談時期" value={data.hikikomoriHistory.consultationDate} />
+                    </>
+                  )}
                 </div>
-                {data.educationEmploymentHistory.truancyDetails && (
+                {data.hikikomoriHistory.consultationDetails && (
                   <InfoItem
-                    label="不登校詳細"
-                    value={data.educationEmploymentHistory.truancyDetails}
-                    fullWidth
-                  />
-                )}
-                {data.educationEmploymentHistory.schoolEpisodes && (
-                  <InfoItem
-                    label="学校でのエピソード"
-                    value={data.educationEmploymentHistory.schoolEpisodes}
+                    label="相談経緯（支援や対応など）"
+                    value={data.hikikomoriHistory.consultationDetails}
                     fullWidth
                   />
                 )}
@@ -277,59 +157,112 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
               <Separator />
 
               <div>
-                <h4 className="font-semibold mb-3">就労歴</h4>
+                <h4 className="font-semibold mb-3">受診・治療の経験</h4>
                 <div className="grid gap-4 md:grid-cols-2">
                   <InfoItem
-                    label="就労歴"
-                    value={data.educationEmploymentHistory.hasEmploymentHistory ? "有" : "無"}
-                    badge={data.educationEmploymentHistory.hasEmploymentHistory}
+                    label="受診・治療経験"
+                    value={data.hikikomoriHistory.hasMedicalHistory ? "有" : "無"}
+                    badge={data.hikikomoriHistory.hasMedicalHistory}
                   />
-                  {data.educationEmploymentHistory.hasEmploymentHistory && (
+                  {data.hikikomoriHistory.hasMedicalHistory && (
                     <>
-                      <InfoItem label="雇用形態" value={data.educationEmploymentHistory.employmentType} />
-                      <InfoItem label="期間" value={data.educationEmploymentHistory.employmentPeriod} />
-                      <InfoItem
-                        label="転職回数"
-                        value={
-                          data.educationEmploymentHistory.jobChangeCount
-                            ? `${data.educationEmploymentHistory.jobChangeCount}回`
-                            : undefined
-                        }
-                      />
-                      <InfoItem
-                        label="最長勤務期間"
-                        value={data.educationEmploymentHistory.longestEmploymentPeriod}
-                      />
+                      <InfoItem label="診断名" value={data.hikikomoriHistory.diagnosis} important />
+                      <InfoItem label="初診日" value={data.hikikomoriHistory.firstVisitDate} />
+                      <InfoItem label="受診期間" value={data.hikikomoriHistory.treatmentPeriod} />
+                      <InfoItem label="精神科以外の受診歴" value={data.hikikomoriHistory.otherMedicalHistory} fullWidth />
                     </>
                   )}
                 </div>
-                {data.educationEmploymentHistory.reasonForLeaving && (
-                  <InfoItem
-                    label="退職理由"
-                    value={data.educationEmploymentHistory.reasonForLeaving}
-                    fullWidth
-                  />
-                )}
-                {data.educationEmploymentHistory.workplaceRelationships && (
-                  <InfoItem
-                    label="職場での対人関係"
-                    value={data.educationEmploymentHistory.workplaceRelationships}
-                    fullWidth
-                  />
-                )}
-                {data.educationEmploymentHistory.employmentSupportHistory && (
-                  <InfoItem
-                    label="就労支援機関利用歴"
-                    value={data.educationEmploymentHistory.employmentSupportHistory}
-                    fullWidth
-                  />
-                )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* 育ちのエピソード */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                育ちのエピソード
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {data.developmentalHistory.episodeCategories && data.developmentalHistory.episodeCategories.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-2">キーワード</div>
+                  <div className="flex flex-wrap gap-2">
+                    {data.developmentalHistory.episodeCategories.map((cat, idx) => (
+                      <Badge key={idx} variant="outline">{cat}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <InfoItem label="幼少期" value={data.developmentalHistory.childhoodEpisode} fullWidth />
+              <InfoItem label="小学校" value={data.developmentalHistory.elementarySchoolEpisode} fullWidth />
+              <InfoItem label="中学校" value={data.developmentalHistory.juniorHighSchoolEpisode} fullWidth />
+              <InfoItem label="高校" value={data.developmentalHistory.highSchoolEpisode} fullWidth />
+              <InfoItem label="大学・専門学校" value={data.developmentalHistory.collegeEpisode} fullWidth />
+
+              <Separator />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <InfoItem label="最終学歴" value={data.developmentalHistory.finalEducation} />
+                <InfoItem label="在学状況" value={data.developmentalHistory.educationStatus} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 就労経験 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                就労経験
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {data.employmentHistory.employmentRecords && data.employmentHistory.employmentRecords.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-3">就労歴</h4>
+                  <div className="space-y-3">
+                    {data.employmentHistory.employmentRecords.map((record, idx) => (
+                      <div key={idx} className="p-3 bg-muted rounded-lg">
+                        <div className="grid gap-2 md:grid-cols-3 text-sm">
+                          {record.age && <div><span className="text-muted-foreground">年齢:</span> {record.age}</div>}
+                          {record.period && <div><span className="text-muted-foreground">期間:</span> {record.period}</div>}
+                          {record.jobContent && <div className="md:col-span-3"><span className="text-muted-foreground">内容:</span> {record.jobContent}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {data.employmentHistory.otherEmployment && data.employmentHistory.otherEmployment.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">その他の就労</div>
+                    <div className="flex flex-wrap gap-2">
+                      {data.employmentHistory.otherEmployment.map((emp, idx) => (
+                        <Badge key={idx} variant="secondary">{emp}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {data.employmentHistory.licenses && (
+                <>
+                  <Separator />
+                  <InfoItem label="免許・資格" value={data.employmentHistory.licenses} fullWidth />
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ⑥ 現在の生活状況 */}
+        {/* タブ2: 生活状況 */}
         <TabsContent value="life" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
@@ -342,8 +275,8 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
               <div>
                 <h4 className="font-semibold mb-3">睡眠</h4>
                 <div className="grid gap-4 md:grid-cols-3">
-                  <InfoItem label="起床時刻" value={data.currentLifeStatus.wakeUpTime} />
-                  <InfoItem label="就寝時刻" value={data.currentLifeStatus.bedTime} />
+                  <InfoItem label="起床" value={data.currentLifeStatus.wakeUpTime} />
+                  <InfoItem label="就寝" value={data.currentLifeStatus.bedTime} />
                   <InfoItem
                     label="昼夜逆転"
                     value={data.currentLifeStatus.hasDayNightReversal ? "有" : "無"}
@@ -355,159 +288,125 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
               <Separator />
 
               <div>
-                <h4 className="font-semibold mb-3">食事・入浴</h4>
+                <h4 className="font-semibold mb-3">食事</h4>
                 <div className="grid gap-4 md:grid-cols-2">
                   <InfoItem label="食事回数" value={data.currentLifeStatus.mealFrequency} />
-                  <InfoItem label="食事の問題" value={data.currentLifeStatus.hasEatingIssues} />
-                  <InfoItem label="入浴頻度" value={data.currentLifeStatus.bathingFrequency} />
+                  <InfoItem label="家族と" value={data.currentLifeStatus.mealsWithFamily} />
                 </div>
               </div>
 
               <Separator />
 
               <div>
-                <h4 className="font-semibold mb-3">趣味・外出</h4>
-                <InfoItem label="趣味・興味" value={data.currentLifeStatus.hobbiesInterests} fullWidth />
-                <div className="grid gap-4 md:grid-cols-2 mt-4">
-                  <InfoItem label="外出頻度" value={data.currentLifeStatus.goingOutFrequency} />
-                  <InfoItem label="外出範囲" value={data.currentLifeStatus.goingOutRange} />
-                  <InfoItem label="外出目的" value={data.currentLifeStatus.goingOutPurpose} />
-                  <InfoItem label="同行者" value={data.currentLifeStatus.companion} />
-                </div>
+                <h4 className="font-semibold mb-3">入浴</h4>
+                <InfoItem label="入浴頻度" value={data.currentLifeStatus.bathingFrequency} />
               </div>
 
               <Separator />
 
               <div>
-                <h4 className="font-semibold mb-3">交流状況</h4>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <InfoItem label="家族内交流" value={data.currentLifeStatus.familyInteraction} />
-                  <InfoItem label="家族外交流" value={data.currentLifeStatus.outsideInteraction} />
-                  <InfoItem label="SNS利用" value={data.currentLifeStatus.snsUsage} />
-                  <InfoItem label="友人関係" value={data.currentLifeStatus.friendRelationships} />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-semibold mb-3">生活技能・経済状況</h4>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <InfoItem label="身だしなみ" value={data.currentLifeStatus.grooming} />
-                  <InfoItem label="経済状況" value={data.currentLifeStatus.economicStatus} />
-                </div>
-                <div className="mt-4 p-4 bg-muted rounded-lg">
-                  <h5 className="font-medium mb-2 text-sm">生活技能</h5>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <SkillBadge label="調理" hasSkill={data.currentLifeStatus.cookingSkill} />
-                    <SkillBadge label="洗濯" hasSkill={data.currentLifeStatus.laundrySkill} />
-                    <SkillBadge label="掃除" hasSkill={data.currentLifeStatus.cleaningSkill} />
-                    <SkillBadge label="金銭管理" hasSkill={data.currentLifeStatus.moneyManagement} />
+                <h4 className="font-semibold mb-3">趣味</h4>
+                {data.currentLifeStatus.hobbies && data.currentLifeStatus.hobbies.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {data.currentLifeStatus.hobbies.map((hobby, idx) => (
+                      <Badge key={idx} variant="secondary">{hobby}</Badge>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">趣味の情報はありません</p>
+                )}
                 {data.currentLifeStatus.availableMoney && (
-                  <InfoItem label="本人が使える金額" value={data.currentLifeStatus.availableMoney} />
+                  <div className="mt-3">
+                    <InfoItem label="本人の使える金銭" value={data.currentLifeStatus.availableMoney} />
+                  </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                問題行動・心理的特徴
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              <Separator />
+
               <div>
-                <h4 className="font-semibold mb-3">問題行動</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <BehaviorBadge
-                    label="家庭内暴力"
-                    present={data.behavioralPsychologicalFeatures.domesticViolence}
-                  />
-                  <BehaviorBadge label="暴言" present={data.behavioralPsychologicalFeatures.verbalAbuse} />
-                  <BehaviorBadge
-                    label="器物破損"
-                    present={data.behavioralPsychologicalFeatures.propertyDamage}
-                  />
-                  <BehaviorBadge
-                    label="強迫行為"
-                    present={data.behavioralPsychologicalFeatures.compulsiveBehavior}
-                  />
-                  <BehaviorBadge label="自傷行為" present={data.behavioralPsychologicalFeatures.selfHarm} />
-                  <BehaviorBadge
-                    label="浪費"
-                    present={data.behavioralPsychologicalFeatures.excessiveSpending}
-                  />
-                  <BehaviorBadge
-                    label="依存行動"
-                    present={data.behavioralPsychologicalFeatures.addictiveBehavior}
-                  />
+                <h4 className="font-semibold mb-3">外出</h4>
+                <InfoItem label="外出状況" value={data.currentLifeStatus.goingOutStatus} fullWidth />
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="font-semibold mb-3">交流</h4>
+                {data.currentLifeStatus.socialInteraction && data.currentLifeStatus.socialInteraction.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {data.currentLifeStatus.socialInteraction.map((interaction, idx) => (
+                      <Badge key={idx} variant="outline">{interaction}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">交流の情報はありません</p>
+                )}
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="font-semibold mb-3">身だしなみ</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <InfoItem label="身だしなみ" value={data.currentLifeStatus.grooming} />
+                  {data.currentLifeStatus.groomingDetails && (
+                    <InfoItem label="詳細" value={data.currentLifeStatus.groomingDetails} />
+                  )}
                 </div>
               </div>
 
-              {data.behavioralPsychologicalFeatures.psychologicalFeatures && (
-                <>
-                  <Separator />
-                  <Alert>
-                    <AlertDescription>
-                      <strong>精神的特徴：</strong>
-                      <p className="mt-2">{data.behavioralPsychologicalFeatures.psychologicalFeatures}</p>
-                    </AlertDescription>
-                  </Alert>
-                </>
-              )}
+              <Separator />
 
-              {data.behavioralPsychologicalFeatures.specialNotes && (
-                <>
-                  <Separator />
-                  <Alert>
+              <div>
+                <h4 className="font-semibold mb-3">生活技能</h4>
+                {data.currentLifeStatus.lifeSkills && data.currentLifeStatus.lifeSkills.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {data.currentLifeStatus.lifeSkills.map((skill, idx) => (
+                      <Badge key={idx} variant="default" className="bg-green-500">{skill}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">生活技能の情報はありません</p>
+                )}
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="font-semibold mb-3">問題行動</h4>
+                {data.currentLifeStatus.problemBehaviors && data.currentLifeStatus.problemBehaviors.length > 0 ? (
+                  <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>支援時の注意点：</strong>
-                      <p className="mt-2">{data.behavioralPsychologicalFeatures.specialNotes}</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {data.currentLifeStatus.problemBehaviors.map((behavior, idx) => (
+                          <Badge key={idx} variant="destructive">{behavior}</Badge>
+                        ))}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <p className="text-sm text-muted-foreground">問題行動の報告はありません</p>
+                )}
+              </div>
+
+              {data.currentLifeStatus.currentSpecialNotes && (
+                <>
+                  <Separator />
+                  <Alert>
+                    <AlertDescription>
+                      <strong>特記事項（現在）：</strong>
+                      <p className="mt-2 whitespace-pre-wrap">{data.currentLifeStatus.currentSpecialNotes}</p>
                     </AlertDescription>
                   </Alert>
                 </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                アセスメント補足
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {data.assessmentSupplement.childhoodEpisodes && (
-                <InfoItem
-                  label="育ちのエピソード"
-                  value={data.assessmentSupplement.childhoodEpisodes}
-                  fullWidth
-                />
-              )}
-              {data.assessmentSupplement.specialNotes && (
-                <InfoItem label="特記事項" value={data.assessmentSupplement.specialNotes} fullWidth />
-              )}
-              {data.assessmentSupplement.informationSharingOrganizations && (
-                <InfoItem
-                  label="情報提供先・連携機関"
-                  value={data.assessmentSupplement.informationSharingOrganizations}
-                  fullWidth
-                />
-              )}
-              {data.assessmentSupplement.recordedBy && (
-                <InfoItem label="記録者" value={data.assessmentSupplement.recordedBy} />
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ⑧ 希望・支援ニーズ */}
+        {/* タブ3: 支援ニーズ */}
         <TabsContent value="support" className="space-y-4 mt-6">
           {/* 本人の希望 */}
           <Card>
@@ -516,9 +415,6 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
                 <Heart className="h-5 w-5 text-blue-500" />
                 本人の希望
               </CardTitle>
-              <CardDescription>
-                本人が支援者に伝えた希望や要望
-              </CardDescription>
             </CardHeader>
             <CardContent>
               {data.supportNeeds.subjectHope ? (
@@ -538,9 +434,6 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
                 <Heart className="h-5 w-5 text-green-500" />
                 家族の希望
               </CardTitle>
-              <CardDescription>
-                家族が支援者に伝えた希望や要望
-              </CardDescription>
             </CardHeader>
             <CardContent>
               {data.supportNeeds.familyHope ? (
@@ -553,6 +446,23 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
             </CardContent>
           </Card>
 
+          {/* 家族関係・特記事項 */}
+          {data.supportNeeds.familyRelationshipNotes && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  家族関係・特記事項
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm whitespace-pre-wrap">{data.supportNeeds.familyRelationshipNotes}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* 今後必要と思われる支援 */}
           {data.supportNeeds.necessarySupport && (
             <Card>
@@ -561,33 +471,11 @@ export function AssessmentViewer({ data }: AssessmentViewerProps) {
                   <ClipboardList className="h-5 w-5" />
                   今後必要と思われる支援
                 </CardTitle>
-                <CardDescription>
-                  支援者が判断した必要な支援内容
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                   <p className="text-sm whitespace-pre-wrap">{data.supportNeeds.necessarySupport}</p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 支援機関連携 */}
-          {data.supportNeeds.partnerOrganizations && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  支援機関連携
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <InfoItem
-                  label="連携する支援機関"
-                  value={data.supportNeeds.partnerOrganizations}
-                  fullWidth
-                />
               </CardContent>
             </Card>
           )}
@@ -621,35 +509,3 @@ function InfoItem({ label, value, fullWidth = false, important = false, badge = 
     </div>
   )
 }
-
-interface SkillBadgeProps {
-  label: string
-  hasSkill?: boolean
-}
-
-function SkillBadge({ label, hasSkill }: SkillBadgeProps) {
-  return (
-    <div
-      className={`flex items-center gap-2 text-xs p-2 rounded ${
-        hasSkill ? "bg-green-500/20 text-green-700 dark:text-green-400" : "bg-gray-500/20 text-gray-600 dark:text-gray-400"
-      }`}
-    >
-      {hasSkill ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-      <span>{label}</span>
-    </div>
-  )
-}
-
-interface BehaviorBadgeProps {
-  label: string
-  present?: boolean
-}
-
-function BehaviorBadge({ label, present }: BehaviorBadgeProps) {
-  return (
-    <Badge variant={present ? "destructive" : "outline"} className="justify-center">
-      {label}: {present ? "有" : "無"}
-    </Badge>
-  )
-}
-

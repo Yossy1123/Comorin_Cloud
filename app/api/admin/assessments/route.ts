@@ -1,5 +1,7 @@
 /**
- * 管理者用：全アセスメント一覧取得API
+ * 全アセスメント一覧取得API
+ * 
+ * 【権限】管理者（ADMIN）および支援者（SUPPORTER）が閲覧可能
  */
 
 import { NextResponse } from "next/server"
@@ -14,18 +16,7 @@ export async function GET() {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 })
     }
 
-    // 管理者チェック
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    })
-
-    if (!user || user.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "管理者権限が必要です" },
-        { status: 403 }
-      )
-    }
+    // 認証済みユーザー（管理者・支援者）であれば閲覧可能
 
     // 全アセスメントを取得
     const assessments = await db.assessment.findMany({

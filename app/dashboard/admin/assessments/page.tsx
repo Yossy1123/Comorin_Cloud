@@ -1,6 +1,10 @@
 /**
- * 管理者専用：アセスメント管理ページ
+ * アセスメント管理ページ
  * アセスメントシートのアップロード・一覧表示
+ * 
+ * 【権限】
+ * - 管理者（ADMIN）：アップロード、閲覧、編集、削除が可能
+ * - 支援者（SUPPORTER）：閲覧、編集が可能（アップロードは管理者のみ）
  */
 
 "use client"
@@ -8,6 +12,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUserRole } from "@/hooks/use-user-role"
+import { useAuth } from "@clerk/nextjs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -50,6 +55,7 @@ interface Patient {
 export default function AdminAssessmentsPage() {
   const router = useRouter()
   const { isAdmin, isLoading: roleLoading } = useUserRole()
+  const { isLoaded, userId } = useAuth()
   const [assessments, setAssessments] = useState<AssessmentListItem[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -62,11 +68,12 @@ export default function AdminAssessmentsPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
 
+  // 認証チェック：ログインしていなければダッシュボードにリダイレクト
   useEffect(() => {
-    if (!roleLoading && !isAdmin) {
+    if (isLoaded && !userId) {
       router.push("/dashboard")
     }
-  }, [isAdmin, roleLoading, router])
+  }, [isLoaded, userId, router])
 
   useEffect(() => {
     async function fetchData() {
@@ -104,12 +111,17 @@ export default function AdminAssessmentsPage() {
       }
     }
 
-    if (isAdmin) {
+    if (userId) {
       fetchData()
     }
-  }, [isAdmin])
+  }, [userId])
 
   const handleUpload = async () => {
+    // アップロードは管理者のみ可能
+    if (!isAdmin) {
+      alert("アップロードは管理者のみが実行できます")
+      return
+    }
     if (!selectedPatientId || !assessmentText.trim()) {
       alert("当事者とアセスメントテキストを入力してください")
       return
@@ -170,7 +182,8 @@ export default function AdminAssessmentsPage() {
     }
   }
 
-  if (roleLoading || !isAdmin) {
+  // ローディング中または未認証の場合は何も表示しない
+  if (!isLoaded || !userId || roleLoading) {
     return null
   }
 
@@ -180,17 +193,20 @@ export default function AdminAssessmentsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">アセスメント管理</h1>
           <p className="text-muted-foreground">
-            当事者のアセスメントシートをアップロード・管理します
+            当事者のアセスメントシートを閲覧・管理します
+            {isAdmin && "（管理者としてアップロードも可能）"}
           </p>
         </div>
         
-        <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Upload className="h-4 w-4" />
-              アセスメントをアップロード
-            </Button>
-          </DialogTrigger>
+        {/* アップロードボタンは管理者のみ表示 */}
+        {isAdmin && (
+          <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Upload className="h-4 w-4" />
+                アセスメントをアップロード
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>アセスメントシートのアップロード</DialogTitle>
@@ -266,6 +282,7 @@ export default function AdminAssessmentsPage() {
             )}
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {error && (
@@ -392,6 +409,13 @@ export default function AdminAssessmentsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => router.push(`/dashboard/admin/assessments/${assessment.id}`)}
+                    >
+                      詳細・編集
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

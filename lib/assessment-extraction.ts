@@ -35,28 +35,80 @@ export async function extractAssessmentFromText(text: string): Promise<Extractio
         {
           role: "system",
           content: `あなたはひきこもり支援のアセスメント情報抽出の専門家です。
-提供されたテキストから、以下の9つのカテゴリに該当する情報を抽出してください。
+提供されたテキストから情報を抽出し、以下のJSON形式で返してください。
 
-【重要】個人情報保護のため、以下の情報は抽出しないでください：
-- 氏名（本人・家族）
-- 生年月日、年齢
-- 住所
-- 電話番号、携帯番号
-- その他、個人を特定できる情報
+【重要】個人情報保護のため、氏名・生年月日・住所・電話番号は抽出しないでください。
 
-カテゴリ：
-1. 基本情報（記入日、相談経路、担当者名、性別、続柄、同居・非同居）※個人名・住所・連絡先は除外
-2. 相談・経過情報（相談経路、相談歴、受診歴等）
-3. ひきこもりの経過（開始時期、きっかけ、現在の状況等）
-4. 生育歴・家族構成（出生状況、家族関係等）※個人名は除外
-5. 学歴・就労歴（学歴、不登校歴、就労歴等）
-6. 現在の生活状況（睡眠、食事、趣味、外出状況等）
-7. 問題行動・心理的特徴（暴力、自傷、精神的特徴等）
-8. 希望・支援ニーズ（本人の希望、家族の希望等）
-9. アセスメント補足項目（育ちのエピソード、特記事項等）
+【必須】以下のJSON構造で返してください：
 
-抽出できない情報は空文字またはnullで返してください。
-必ずJSON形式で返してください。`,
+{
+  "basicInfo": {
+    "age": "年齢（例: 20代後半）",
+    "familyStructure": "家族構成（例: 両親と本人の3人家族、一人っ子）",
+    "economicStatus": "経済状況",
+    "consultationContent": "相談内容"
+  },
+  "hikikomoriHistory": {
+    "duration": "ひきこもり歴（例: 23歳頃から、約5年）",
+    "trigger": "きっかけ・経緯（詳細に記述）",
+    "triggerCategories": ["不登校", "対人関係", "心身の不調"],
+    "hasConsultationHistory": true/false,
+    "consultationDestination": "相談先（例: 市の窓口）",
+    "consultationDate": "相談時期",
+    "consultationDetails": "相談経緯",
+    "hasMedicalHistory": true/false,
+    "diagnosis": "診断名（例: 抑うつ、不安障害）",
+    "firstVisitDate": "初診日（例: 20歳頃）",
+    "treatmentPeriod": "受診期間",
+    "otherMedicalHistory": "その他医療歴・薬歴（詳細に記述、例: 抗うつ薬服用、薬が合わなかった等）"
+  },
+  "developmentalHistory": {
+    "childhoodEpisode": "幼少期エピソード",
+    "elementarySchoolEpisode": "小学校エピソード",
+    "juniorHighSchoolEpisode": "中学校エピソード",
+    "highSchoolEpisode": "高校エピソード（例: 2年から不登校、人間関係で中退）",
+    "collegeEpisode": "大学・専門学校エピソード",
+    "episodeCategories": ["不登校", "対人関係", "いじめ"],
+    "finalEducation": "最終学歴（例: 高校中退）",
+    "educationStatus": "在学状況"
+  },
+  "employmentHistory": {
+    "employmentRecords": [{"age": "23歳", "period": "3ヶ月", "content": "飲食店"}],
+    "otherEmployment": ["倉庫業アルバイト"],
+    "licenses": "免許・資格"
+  },
+  "currentLifeStatus": {
+    "wakeUpTime": "起床時刻",
+    "bedTime": "就寝時刻",
+    "hasDayNightReversal": true/false,
+    "mealFrequency": "食事回数",
+    "mealsWithFamily": "家族と一緒/別/部屋食",
+    "bathingFrequency": "入浴頻度（例: 週2〜3回）",
+    "hobbies": ["ゲーム", "動画視聴"],
+    "availableMoney": "本人の使える金銭",
+    "goingOutStatus": "外出状況（例: 月1〜2回、コンビニくらい）",
+    "socialInteraction": ["家族", "友人なし"],
+    "grooming": "身だしなみ",
+    "groomingDetails": "詳細",
+    "lifeSkills": ["調理", "掃除"],
+    "problemBehaviors": ["暴言たまに", "オンラインゲーム課金"],
+    "currentSpecialNotes": "特記事項"
+  },
+  "supportNeeds": {
+    "subjectHope": "本人の希望（詳細に記述）",
+    "familyHope": "家族の希望（詳細に記述）",
+    "familyRelationshipNotes": "家族関係（例: 母が対応多い、父は忙しい）",
+    "necessarySupport": "今後必要な支援"
+  }
+}
+
+【重要な抽出ポイント】
+1. 受診歴・治療歴は必ず抽出してください（診断名、薬歴、服薬状況、副作用等）
+2. 「20歳頃」「23歳頃から」などの時期情報を正確に抽出
+3. 本人・家族の発言は直接引用して記録
+4. 情報がない項目は空文字""、空配列[]、またはfalseを返す
+
+抽出できない情報は空にしてください。必ずJSON形式で返してください。`,
         },
         {
           role: "user",
@@ -86,114 +138,71 @@ export async function extractAssessmentFromText(text: string): Promise<Extractio
       sourceText: text,
       extractionConfidence: calculateConfidence(parsedData),
       
+      // タブ1: 背景・経過
       basicInfo: {
-        recordDate: parsedData.basicInfo?.recordDate || "",
-        receptionDate: parsedData.basicInfo?.receptionDate || "",
-        consultationRoute: parsedData.basicInfo?.consultationRoute || "",
-        staffName: parsedData.basicInfo?.staffName || "",
-        gender: parsedData.basicInfo?.gender || "",
-        relationship: parsedData.basicInfo?.relationship || "",
-        livingTogether: parsedData.basicInfo?.livingTogether || "",
-      },
-      
-      consultationHistory: {
-        consultationRoute: parsedData.consultationHistory?.consultationRoute || "",
-        firstConsultationDate: parsedData.consultationHistory?.firstConsultationDate || "",
-        firstConsultationOrganization: parsedData.consultationHistory?.firstConsultationOrganization || "",
-        hasConsultationHistory: parsedData.consultationHistory?.hasConsultationHistory || false,
-        consultationHistoryDetails: parsedData.consultationHistory?.consultationHistoryDetails || "",
-        hasMedicalHistory: parsedData.consultationHistory?.hasMedicalHistory || false,
-        diagnosis: parsedData.consultationHistory?.diagnosis || "",
-        medicalInstitution: parsedData.consultationHistory?.medicalInstitution || "",
-        medicalPeriod: parsedData.consultationHistory?.medicalPeriod || "",
-        socialResourcesUsed: parsedData.consultationHistory?.socialResourcesUsed || "",
+        age: parsedData.basicInfo?.age || "",
+        familyStructure: parsedData.basicInfo?.familyStructure || "",
+        economicStatus: parsedData.basicInfo?.economicStatus || "",
+        consultationContent: parsedData.basicInfo?.consultationContent || "",
       },
       
       hikikomoriHistory: {
-        startDate: parsedData.hikikomoriHistory?.startDate || "",
-        statusType: parsedData.hikikomoriHistory?.statusType || "",
+        duration: parsedData.hikikomoriHistory?.duration || "",
         trigger: parsedData.hikikomoriHistory?.trigger || "",
-        currentDuration: parsedData.hikikomoriHistory?.currentDuration || "",
-        frequency: parsedData.hikikomoriHistory?.frequency || "",
-        goingOutStatus: parsedData.hikikomoriHistory?.goingOutStatus || "",
-        lifeChanges: parsedData.hikikomoriHistory?.lifeChanges || "",
+        triggerCategories: parsedData.hikikomoriHistory?.triggerCategories || [],
+        hasConsultationHistory: parsedData.hikikomoriHistory?.hasConsultationHistory || false,
+        consultationDestination: parsedData.hikikomoriHistory?.consultationDestination || "",
+        consultationDate: parsedData.hikikomoriHistory?.consultationDate || "",
+        consultationDetails: parsedData.hikikomoriHistory?.consultationDetails || "",
+        hasMedicalHistory: parsedData.hikikomoriHistory?.hasMedicalHistory || false,
+        diagnosis: parsedData.hikikomoriHistory?.diagnosis || "",
+        firstVisitDate: parsedData.hikikomoriHistory?.firstVisitDate || "",
+        treatmentPeriod: parsedData.hikikomoriHistory?.treatmentPeriod || "",
+        otherMedicalHistory: parsedData.hikikomoriHistory?.otherMedicalHistory || "",
       },
       
       developmentalHistory: {
-        birthCircumstances: parsedData.developmentalHistory?.birthCircumstances || "",
-        childhoodCharacteristics: parsedData.developmentalHistory?.childhoodCharacteristics || "",
-        familyStructure: parsedData.developmentalHistory?.familyStructure || "",
-        familyRelationships: parsedData.developmentalHistory?.familyRelationships || "",
-        interpersonalRelationships: parsedData.developmentalHistory?.interpersonalRelationships || "",
-        caregiverRelationship: parsedData.developmentalHistory?.caregiverRelationship || "",
-        specialNotes: parsedData.developmentalHistory?.specialNotes || "",
+        childhoodEpisode: parsedData.developmentalHistory?.childhoodEpisode || "",
+        elementarySchoolEpisode: parsedData.developmentalHistory?.elementarySchoolEpisode || "",
+        juniorHighSchoolEpisode: parsedData.developmentalHistory?.juniorHighSchoolEpisode || "",
+        highSchoolEpisode: parsedData.developmentalHistory?.highSchoolEpisode || "",
+        collegeEpisode: parsedData.developmentalHistory?.collegeEpisode || "",
+        episodeCategories: parsedData.developmentalHistory?.episodeCategories || [],
+        finalEducation: parsedData.developmentalHistory?.finalEducation || "",
+        educationStatus: parsedData.developmentalHistory?.educationStatus || "",
       },
       
-      educationEmploymentHistory: {
-        education: parsedData.educationEmploymentHistory?.education || "",
-        hasTruancy: parsedData.educationEmploymentHistory?.hasTruancy || false,
-        truancyDetails: parsedData.educationEmploymentHistory?.truancyDetails || "",
-        schoolEpisodes: parsedData.educationEmploymentHistory?.schoolEpisodes || "",
-        hasEmploymentHistory: parsedData.educationEmploymentHistory?.hasEmploymentHistory || false,
-        employmentPeriod: parsedData.educationEmploymentHistory?.employmentPeriod || "",
-        jobChangeCount: parsedData.educationEmploymentHistory?.jobChangeCount || undefined,
-        longestEmploymentPeriod: parsedData.educationEmploymentHistory?.longestEmploymentPeriod || "",
-        employmentType: parsedData.educationEmploymentHistory?.employmentType || "",
-        reasonForLeaving: parsedData.educationEmploymentHistory?.reasonForLeaving || "",
-        workplaceRelationships: parsedData.educationEmploymentHistory?.workplaceRelationships || "",
-        employmentSupportHistory: parsedData.educationEmploymentHistory?.employmentSupportHistory || "",
+      employmentHistory: {
+        employmentRecords: parsedData.employmentHistory?.employmentRecords || [],
+        otherEmployment: parsedData.employmentHistory?.otherEmployment || [],
+        licenses: parsedData.employmentHistory?.licenses || "",
       },
       
+      // タブ2: 生活状況
       currentLifeStatus: {
         wakeUpTime: parsedData.currentLifeStatus?.wakeUpTime || "",
         bedTime: parsedData.currentLifeStatus?.bedTime || "",
         hasDayNightReversal: parsedData.currentLifeStatus?.hasDayNightReversal || false,
         mealFrequency: parsedData.currentLifeStatus?.mealFrequency || "",
-        eatsWithFamily: parsedData.currentLifeStatus?.eatsWithFamily || false,
-        hasEatingIssues: parsedData.currentLifeStatus?.hasEatingIssues || "",
+        mealsWithFamily: parsedData.currentLifeStatus?.mealsWithFamily || "",
         bathingFrequency: parsedData.currentLifeStatus?.bathingFrequency || "",
-        hobbiesInterests: parsedData.currentLifeStatus?.hobbiesInterests || "",
-        goingOutFrequency: parsedData.currentLifeStatus?.goingOutFrequency || "",
-        goingOutRange: parsedData.currentLifeStatus?.goingOutRange || "",
-        goingOutPurpose: parsedData.currentLifeStatus?.goingOutPurpose || "",
-        companion: parsedData.currentLifeStatus?.companion || "",
-        familyInteraction: parsedData.currentLifeStatus?.familyInteraction || "",
-        outsideInteraction: parsedData.currentLifeStatus?.outsideInteraction || "",
-        snsUsage: parsedData.currentLifeStatus?.snsUsage || "",
-        friendRelationships: parsedData.currentLifeStatus?.friendRelationships || "",
-        grooming: parsedData.currentLifeStatus?.grooming || "",
-        cookingSkill: parsedData.currentLifeStatus?.cookingSkill || false,
-        laundrySkill: parsedData.currentLifeStatus?.laundrySkill || false,
-        cleaningSkill: parsedData.currentLifeStatus?.cleaningSkill || false,
-        moneyManagement: parsedData.currentLifeStatus?.moneyManagement || false,
-        economicStatus: parsedData.currentLifeStatus?.economicStatus || "",
+        hobbies: parsedData.currentLifeStatus?.hobbies || [],
         availableMoney: parsedData.currentLifeStatus?.availableMoney || "",
+        goingOutStatus: parsedData.currentLifeStatus?.goingOutStatus || "",
+        socialInteraction: parsedData.currentLifeStatus?.socialInteraction || [],
+        grooming: parsedData.currentLifeStatus?.grooming || "",
+        groomingDetails: parsedData.currentLifeStatus?.groomingDetails || "",
+        lifeSkills: parsedData.currentLifeStatus?.lifeSkills || [],
+        problemBehaviors: parsedData.currentLifeStatus?.problemBehaviors || [],
+        currentSpecialNotes: parsedData.currentLifeStatus?.currentSpecialNotes || "",
       },
       
-      behavioralPsychologicalFeatures: {
-        domesticViolence: parsedData.behavioralPsychologicalFeatures?.domesticViolence || false,
-        verbalAbuse: parsedData.behavioralPsychologicalFeatures?.verbalAbuse || false,
-        propertyDamage: parsedData.behavioralPsychologicalFeatures?.propertyDamage || false,
-        compulsiveBehavior: parsedData.behavioralPsychologicalFeatures?.compulsiveBehavior || false,
-        selfHarm: parsedData.behavioralPsychologicalFeatures?.selfHarm || false,
-        excessiveSpending: parsedData.behavioralPsychologicalFeatures?.excessiveSpending || false,
-        addictiveBehavior: parsedData.behavioralPsychologicalFeatures?.addictiveBehavior || false,
-        psychologicalFeatures: parsedData.behavioralPsychologicalFeatures?.psychologicalFeatures || "",
-        specialNotes: parsedData.behavioralPsychologicalFeatures?.specialNotes || "",
-      },
-      
+      // タブ3: 支援ニーズ
       supportNeeds: {
         subjectHope: parsedData.supportNeeds?.subjectHope || "",
         familyHope: parsedData.supportNeeds?.familyHope || "",
+        familyRelationshipNotes: parsedData.supportNeeds?.familyRelationshipNotes || "",
         necessarySupport: parsedData.supportNeeds?.necessarySupport || "",
-        partnerOrganizations: parsedData.supportNeeds?.partnerOrganizations || "",
-      },
-      
-      assessmentSupplement: {
-        childhoodEpisodes: parsedData.assessmentSupplement?.childhoodEpisodes || "",
-        specialNotes: parsedData.assessmentSupplement?.specialNotes || "",
-        informationSharingOrganizations: parsedData.assessmentSupplement?.informationSharingOrganizations || "",
-        recordedBy: parsedData.assessmentSupplement?.recordedBy || "",
       },
     }
 
@@ -248,9 +257,9 @@ function calculateConfidence(data: any): number {
 function generateWarnings(data: AssessmentData): string[] {
   const warnings: string[] = []
 
-  // ひきこもり経過のチェック
-  if (!data.hikikomoriHistory.startDate) {
-    warnings.push("ひきこもり開始時期が抽出できませんでした")
+  // ひきこもり歴のチェック
+  if (!data.hikikomoriHistory.duration) {
+    warnings.push("ひきこもり歴（期間）が抽出できませんでした")
   }
   if (!data.hikikomoriHistory.trigger) {
     warnings.push("ひきこもりのきっかけ・経緯が抽出できませんでした")
@@ -259,6 +268,11 @@ function generateWarnings(data: AssessmentData): string[] {
   // 支援ニーズのチェック
   if (!data.supportNeeds.subjectHope && !data.supportNeeds.familyHope) {
     warnings.push("本人または家族の希望が抽出できませんでした")
+  }
+
+  // 生活状況のチェック
+  if (!data.currentLifeStatus.wakeUpTime && !data.currentLifeStatus.bedTime) {
+    warnings.push("睡眠時間の情報が抽出できませんでした")
   }
 
   return warnings

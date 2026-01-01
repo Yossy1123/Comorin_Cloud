@@ -1,159 +1,131 @@
 // アセスメントシートのデータ型定義
 // ※個人情報保護のため、氏名・住所・連絡先などは記録しない
 
-// ① 基本情報（個人を特定できる情報は除外）
+// ============================================
+// タブ1: 背景・経過
+// ============================================
+
+// 基本情報
 export interface BasicInfo {
-  recordDate?: string // 記入日
-  receptionDate?: string // 受付日
-  consultationRoute?: string // 相談経路
-  staffName?: string // 担当者名
-  
-  // 対象者情報（個人特定情報は除外）
-  gender?: "男性" | "女性" | "その他" | "" // 性別
-  
-  // 相談者情報（個人名は除外）
-  relationship?: string // 続柄
-  livingTogether?: "同居" | "非同居" | "" // 同居・非同居
-}
-
-// ② 相談・経過情報
-export interface ConsultationHistory {
-  consultationRoute?: string // 相談経路
-  firstConsultationDate?: string // 初回相談日
-  firstConsultationOrganization?: string // 初回相談機関
-  
-  // 相談歴
-  hasConsultationHistory?: boolean // 相談歴の有無
-  consultationHistoryDetails?: string // 相談先、時期
-  
-  // 受診歴
-  hasMedicalHistory?: boolean // 受診歴の有無
-  diagnosis?: string // 診断名
-  medicalInstitution?: string // 医療機関名
-  medicalPeriod?: string // 期間
-  
-  // 社会資源利用歴
-  socialResourcesUsed?: string // 福祉・就労支援・医療など
-}
-
-// ③ ひきこもりの経過
-export interface HikikomoriHistory {
-  startDate?: string // ひきこもり開始時期
-  statusType?: "継続" | "断続" | "" // 継続・断続
-  trigger?: string // きっかけ・経緯
-  
-  // 現在の状況
-  currentDuration?: string // 継続期間
-  frequency?: string // 頻度
-  goingOutStatus?: string // 外出状況
-  lifeChanges?: string // 生活の変化や特徴
-}
-
-// ④ 生育歴・家族構成
-export interface DevelopmentalHistory {
-  birthCircumstances?: string // 出生状況
-  childhoodCharacteristics?: string // 幼少期の性格や特徴
+  // 利用者情報（個人を特定できる情報は除外）
+  age?: string // 年齢（年代で記録: 10代、20代など）
   familyStructure?: string // 家族構成
-  familyRelationships?: string // 家族関係
-  interpersonalRelationships?: string // 対人関係の特徴
-  caregiverRelationship?: string // 養育者との関係性
-  specialNotes?: string // 特記事項
-}
-
-// ⑤ 学歴・就労歴
-export interface EducationEmploymentHistory {
-  // 学歴
-  education?: string // 小・中・高・専・大・大学院・通信
-  hasTruancy?: boolean // 不登校歴の有無
-  truancyDetails?: string // 時期・理由
-  schoolEpisodes?: string // 成績・いじめ・人間関係など
+  economicStatus?: "生活保護" | "困窮" | "平均的" | "裕福" | "" // 経済状況
   
-  // 就労歴
-  hasEmploymentHistory?: boolean // 就労歴の有無
-  employmentPeriod?: string // 期間
-  jobChangeCount?: number // 転職回数
-  longestEmploymentPeriod?: string // 最長勤務期間
-  employmentType?: string // 雇用形態
-  reasonForLeaving?: string // 仕事を辞めた理由
-  workplaceRelationships?: string // 職場での対人関係
-  employmentSupportHistory?: string // 就労支援機関利用歴
+  // 相談内容
+  consultationContent?: string // 相談内容の詳細
 }
 
-// ⑥ 現在の生活状況
+// ひきこもり歴・経緯
+export interface HikikomoriHistory {
+  duration?: string // ひきこもり歴（期間）
+  trigger?: string // きっかけ・経緯
+  triggerCategories?: string[] // きっかけのカテゴリ（不登校、受験、就職活動、職場関係等）
+  
+  // 相談経験
+  hasConsultationHistory?: boolean // 相談歴の有無
+  consultationDestination?: string // 相談先
+  consultationDate?: string // 相談した時期
+  consultationDetails?: string // 相談経緯（支援や対応など）
+  
+  // 受診・治療の経験
+  hasMedicalHistory?: boolean // 受診・治療経験の有無
+  diagnosis?: string // 診断名
+  firstVisitDate?: string // 初診日
+  treatmentPeriod?: string // 受診期間
+  otherMedicalHistory?: string // 精神科以外の受診歴
+}
+
+// 育ちのエピソード・学歴
+export interface DevelopmentalHistory {
+  // 各時期のエピソード
+  childhoodEpisode?: string // 幼少期
+  elementarySchoolEpisode?: string // 小学校
+  juniorHighSchoolEpisode?: string // 中学校
+  highSchoolEpisode?: string // 高校
+  collegeEpisode?: string // 大学・専門学校
+  
+  // 学業・対人関係のキーワード
+  episodeCategories?: string[] // 学業、こだわり、対人関係、不登校、いじめ等
+  
+  // 最終学歴
+  finalEducation?: string // 中・高・専・短・大・大学院
+  educationStatus?: "在学中" | "卒業" | "中退" | "休学中" | "" // 在学状況
+}
+
+// 就労経験
+export interface EmploymentHistory {
+  // 就労歴の詳細
+  employmentRecords?: Array<{
+    age?: string // 年齢
+    period?: string // 期間
+    jobContent?: string // 就労内容
+  }>
+  
+  // その他の就労
+  otherEmployment?: string[] // アルバイト経験、パート、派遣等
+  
+  // 免許・資格
+  licenses?: string // 保有している免許・資格
+}
+
+// ============================================
+// タブ2: 生活状況
+// ============================================
+
+// 現在の生活状況
 export interface CurrentLifeStatus {
   // 睡眠
-  wakeUpTime?: string // 起床時刻
-  bedTime?: string // 就寝時刻
+  wakeUpTime?: string // 起床時刻（AM/PM 時頃）
+  bedTime?: string // 就寝時刻（AM/PM 時頃）
   hasDayNightReversal?: boolean // 昼夜逆転の有無
   
   // 食事
-  mealFrequency?: string // 回数
-  eatsWithFamily?: boolean // 家族と一緒
-  hasEatingIssues?: string // 偏食・過食・拒食
+  mealFrequency?: string // 食事回数（回/日）
+  mealsWithFamily?: "一緒" | "別" | "部屋食" | "" // 家族と一緒か
   
   // 入浴
-  bathingFrequency?: string // 頻度
+  bathingFrequency?: string // 入浴頻度（毎日、2〜3日ごと、週1回等）
   
-  // 趣味・興味
-  hobbiesInterests?: string // ゲーム・音楽・テレビ・ネット・読書など
+  // 趣味
+  hobbies?: string[] // テレビ、インターネット、携帯、ゲーム、音楽、読書等
+  availableMoney?: string // 本人の使える金銭
   
-  // 外出状況
-  goingOutFrequency?: string // 頻度
-  goingOutRange?: string // 範囲
-  goingOutPurpose?: string // 目的
-  companion?: string // 同行者
+  // 外出
+  goingOutStatus?: string // 外出状況（自室から出ない、家から出ない、近所のコンビニ等）
   
-  // 交流状況
-  familyInteraction?: string // 家族内
-  outsideInteraction?: string // 家族外
-  snsUsage?: string // SNS
-  friendRelationships?: string // 友人関係
+  // 交流
+  socialInteraction?: string[] // 家族、親戚、友人、メール、パソコン、無等
   
   // 身だしなみ
-  grooming?: "整っている" | "無頓着" | "こだわりがある" | "" 
+  grooming?: "普通" | "関心がない" | "こだわりがある" | "" 
+  groomingDetails?: string // こだわりの詳細
   
   // 生活技能
-  cookingSkill?: boolean
-  laundrySkill?: boolean
-  cleaningSkill?: boolean
-  moneyManagement?: boolean
+  lifeSkills?: string[] // 調理、食器洗い、洗濯、掃除
   
-  // 経済状況
-  economicStatus?: "生活保護" | "困窮" | "平均" | "裕福" | ""
-  availableMoney?: string // 本人が使える金額
-}
-
-// ⑦ 問題行動・心理的特徴
-export interface BehavioralPsychologicalFeatures {
   // 問題行動
-  domesticViolence?: boolean // 家庭内暴力
-  verbalAbuse?: boolean // 暴言
-  propertyDamage?: boolean // 器物破損
-  compulsiveBehavior?: boolean // 強迫行為
-  selfHarm?: boolean // 自傷行為
-  excessiveSpending?: boolean // 浪費
-  addictiveBehavior?: boolean // 依存行動
+  problemBehaviors?: string[] // 家庭内暴力、支配的言動、物の破損、暴言、強迫行為、自傷行為、浪費、過食、拒食、不潔行為等
   
-  // 精神的特徴
-  psychologicalFeatures?: string // 不安・抑うつ・緊張・意欲低下など
-  specialNotes?: string // 支援時に注意すべき行動パターンなど
+  // 特記事項（現在）
+  currentSpecialNotes?: string // 現在の特記事項
 }
 
-// ⑧ 希望・支援ニーズ
+// ============================================
+// タブ3: 支援ニーズ
+// ============================================
+
+// 希望・支援ニーズ
 export interface SupportNeeds {
   subjectHope?: string // 本人の希望
   familyHope?: string // 家族の希望
+  familyRelationshipNotes?: string // 家族関係・特記事項
   necessarySupport?: string // 今後必要と思われる支援
-  partnerOrganizations?: string // 支援機関連携
 }
 
-// ⑨ アセスメント補足項目
-export interface AssessmentSupplement {
-  childhoodEpisodes?: string // 育ちのエピソード
-  specialNotes?: string // 特記事項（印象・支援上の留意点）
-  informationSharingOrganizations?: string // 情報提供先・連携機関
-  recordedBy?: string // 記録者（記入者氏名・所属）
-}
+// ============================================
+// 統合データ型
+// ============================================
 
 // 完全なアセスメントデータ
 export interface AssessmentData {
@@ -161,15 +133,17 @@ export interface AssessmentData {
   createdAt?: string
   updatedAt?: string
   
+  // タブ1: 背景・経過
   basicInfo: BasicInfo
-  consultationHistory: ConsultationHistory
   hikikomoriHistory: HikikomoriHistory
   developmentalHistory: DevelopmentalHistory
-  educationEmploymentHistory: EducationEmploymentHistory
+  employmentHistory: EmploymentHistory
+  
+  // タブ2: 生活状況
   currentLifeStatus: CurrentLifeStatus
-  behavioralPsychologicalFeatures: BehavioralPsychologicalFeatures
+  
+  // タブ3: 支援ニーズ
   supportNeeds: SupportNeeds
-  assessmentSupplement: AssessmentSupplement
   
   // メタ情報
   sourceText?: string // 元のテキストデータ

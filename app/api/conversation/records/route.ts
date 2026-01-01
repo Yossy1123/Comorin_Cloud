@@ -48,11 +48,24 @@ export async function GET() {
         acc[patientId] = [];
       }
       
+      // sentimentからemotionとstressLevelを抽出
+      const sentiment = conv.sentiment as { emotion?: string; stressLevel?: string } | null;
+      const keywords = conv.keywords as string[] | null;
+      
       acc[patientId].push({
         id: conv.id,
         patientId: patientId,
         recordedAt: conv.recordedAt,
         transcript: conv.transcript,
+        sentiment: conv.sentiment,
+        keywords: conv.keywords,
+        // analysis形式に変換（後方互換性のため）
+        analysis: sentiment || keywords ? {
+          emotion: sentiment?.emotion || "ニュートラル",
+          stressLevel: sentiment?.stressLevel || "中",
+          keywords: keywords || [],
+          recommendation: "",
+        } : undefined,
       });
       
       return acc;
@@ -61,6 +74,14 @@ export async function GET() {
       patientId: string;
       recordedAt: Date;
       transcript: string;
+      sentiment: any;
+      keywords: any;
+      analysis?: {
+        emotion: string;
+        stressLevel: string;
+        keywords: string[];
+        recommendation: string;
+      };
     }>>);
 
     return NextResponse.json({ records: groupedRecords });
